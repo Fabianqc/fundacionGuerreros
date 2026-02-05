@@ -1,0 +1,20 @@
+# Dependencias
+/backend/node_modules
+/frontend/node_modules
+frontend/.next/
+backend/dist/
+
+# Archivos de configuración y secretos
+.env
+.env.development
+.env.production
+
+
+# Compilación y logs
+/dist
+/build
+*.log
+
+# Entornos de desarrollo
+.vscode/
+/sistema de boxeo.code-workspace
