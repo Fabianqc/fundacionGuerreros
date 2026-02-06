@@ -11,7 +11,13 @@ export default function Footer() {
                     {/* Brand */}
                     <div className="text-center md:text-left max-w-sm">
                         <div className="flex items-center justify-center md:justify-start gap-3 mb-4">
-                            <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center font-bold text-lg shadow-lg">G</div>
+                            <div className="relative">
+                                <img
+                                    src="/logo-guerreros-de-amor.png"
+                                    alt="Logo"
+                                    className="h-16 w-auto object-contain drop-shadow-lg"
+                                />
+                            </div>
                             <span className="text-2xl font-bold bg-gradient-to-r from-white to-purple-400 bg-clip-text text-transparent">Fundación Guerreros</span>
                         </div>
                         <p className="text-gray-400 text-sm leading-relaxed">

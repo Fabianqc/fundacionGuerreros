@@ -30,19 +30,21 @@ export default function Navbar() {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out ${isScrolled
-          ? "bg-white/80 backdrop-blur-md shadow-sm py-2"
-          : "bg-transparent py-6"
+        ? "bg-white/80 backdrop-blur-md shadow-sm py-2"
+        : "bg-transparent py-6"
         }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <div className="flex items-center relative z-50">
-            <Link href="/" className="flex-shrink-0 flex items-center gap-3" onClick={() => setIsOpen(false)}>
-              <div
-                className={`flex items-center justify-center rounded-full font-bold text-white transition-all duration-500 ${isScrolled || isOpen ? "w-10 h-10 text-base bg-purple-600 shadow-xl" : "w-12 h-12 text-lg bg-purple-600/90 shadow-2xl"
-                  }`}
-              >
-                G
+            <Link href="/" className="flex-shrink-0 flex items-center gap-4 group" onClick={() => setIsOpen(false)}>
+              <div className="relative transition-all duration-500 transform group-hover:scale-110 group-hover:rotate-2">
+                <img
+                  src="/logo-guerreros-de-amor.png"
+                  alt="Logo Fundación Guerreros de Amor"
+                  className={`object-contain transition-all duration-500 drop-shadow-lg ${isScrolled || isOpen ? "h-16 w-auto" : "h-20 w-auto"
+                    }`}
+                />
               </div>
               <span
                 className={`font-bold transition-all duration-500 ${isOpen ? "text-2xl text-white" : isScrolled ? "text-xl text-gray-900" : "text-2xl text-white drop-shadow-md"
@@ -71,8 +73,8 @@ export default function Navbar() {
               <Link
                 href="#donate"
                 className={`px-6 py-2 rounded-full font-bold transition-all duration-300 shadow-lg hover:shadow-purple-500/30 transform hover:-translate-y-1 ${isScrolled
-                    ? "bg-purple-600 text-white hover:bg-purple-700"
-                    : "bg-white text-purple-600 hover:bg-purple-50"
+                  ? "bg-purple-600 text-white hover:bg-purple-700"
+                  : "bg-white text-purple-600 hover:bg-purple-50"
                   }`}
               >
                 Donar
@@ -144,6 +146,6 @@ export default function Navbar() {
         {/* Decorative background visual */}
         <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-purple-600/20 to-transparent pointer-events-none" />
       </div>
-    </nav>
+    </nav >
   );
 }
