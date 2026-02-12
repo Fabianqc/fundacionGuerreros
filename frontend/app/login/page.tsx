@@ -5,19 +5,51 @@ import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, CornerUpLeft } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function LoginPage() {
+    const { data: session, status } = useSession();
+    const router = useRouter();
+
+
+    useEffect(() => {
+        if (status === "authenticated") {
+            router.push("/admin");
+        }
+    }, [status, router]);
+
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
-        // Simulate login delay
-        setTimeout(() => {
+        setError(null);
+
+        const formData = new FormData(e.currentTarget);
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+
+        try {
+            const res = await signIn("credentials", {
+                email,
+                password,
+                redirect: false,
+            });
+
+            if (res?.error) {
+                setError("Credenciales inválidas. Por favor intenta de nuevo.");
+            } else {
+                router.push("/dashboard"); // Redirect to dashboard or home
+            }
+        } catch (error) {
+            setError("Ocurrió un error inesperado. Intenta más tarde.");
+        } finally {
             setLoading(false);
-            alert("La funcionalidad de login será conectada con el backend próximamente.");
-        }, 1500);
+        }
     };
 
     return (
@@ -101,6 +133,11 @@ export default function LoginPage() {
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            {error && (
+                                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                                    <span className="block sm:inline">{error}</span>
+                                </div>
+                            )}
                             {/* Email Input */}
                             <div className="space-y-2">
                                 <label className="text-sm font-semibold text-gray-700 ml-1">Correo Electrónico</label>
@@ -110,6 +147,7 @@ export default function LoginPage() {
                                     </div>
                                     <input
                                         type="email"
+                                        name="email"
                                         placeholder="ejemplo@correo.com"
                                         className="w-full pl-12 pr-4 py-3.5 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all shadow-sm group-hover:border-gray-300"
                                         required
@@ -131,6 +169,7 @@ export default function LoginPage() {
                                     </div>
                                     <input
                                         type={showPassword ? "text" : "password"}
+                                        name="password"
                                         placeholder="••••••••"
                                         className="w-full pl-12 pr-12 py-3.5 bg-white border border-gray-200 rounded-xl text-gray-700 placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition-all shadow-sm group-hover:border-gray-300"
                                         required

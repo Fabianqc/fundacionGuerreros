@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
     LayoutDashboard,
     Users,
@@ -89,13 +90,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </nav>
 
                 <div className="p-4 border-t border-purple-800">
-                    <Link
-                        href="/"
-                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-200 hover:bg-red-900/20 hover:text-red-100 transition-colors"
+                    <button
+                        onClick={() => signOut()}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-red-200 hover:bg-red-900/20 hover:text-red-100 transition-colors w-full"
                     >
                         <LogOut className="w-5 h-5" />
                         <span>Cerrar Sesión</span>
-                    </Link>
+                    </button>
                 </div>
             </motion.aside>
 

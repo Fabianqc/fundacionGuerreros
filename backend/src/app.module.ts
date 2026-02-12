@@ -18,6 +18,7 @@ import { PatologiaModule } from './patologia/patologia.module';
 import { PersonasModule } from './personas/personas.module';
 import { TipoAyudasModule } from './tipo-ayudas/tipo-ayudas.module';
 import { UsuarioModule } from './usuario/usuario.module';
+import { AuthModule } from './auth/auth.module';
 @Module({
   imports: [ConfigModule.forRoot(), TypeOrmModule.forRoot({
     type: 'postgres',
@@ -26,8 +27,9 @@ import { UsuarioModule } from './usuario/usuario.module';
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
+    schema: 'Fundacion',
     autoLoadEntities: true,
-  }), AuditLogModule, AyudasTecnicasModule, ConsultaModule, ConsultaHasPatologiaModule, DoctorModule, DoctorHorarioModule, DoctorHasEspecialidadesModule, EspecialidadesModule, ImgModule, NucleoFamiliarModule, PacienteModule, PatologiaModule, PersonasModule, TipoAyudasModule, UsuarioModule],
+  }), AuditLogModule, AuthModule, AyudasTecnicasModule, ConsultaModule, ConsultaHasPatologiaModule, DoctorModule, DoctorHorarioModule, DoctorHasEspecialidadesModule, EspecialidadesModule, ImgModule, NucleoFamiliarModule, PacienteModule, PatologiaModule, PersonasModule, TipoAyudasModule, UsuarioModule],
   controllers: [AppController],
   providers: [AppService],
 })
