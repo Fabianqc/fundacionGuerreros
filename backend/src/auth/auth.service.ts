@@ -26,15 +26,11 @@ export class AuthService {
     }
 
     async login(loginDto: LoginDto) {
-        console.log("in login seccion")
         const user = await this.usersService.findOneByEmail(loginDto.email);
-        console.log(user);
 
         if (!user) {
             throw new UnauthorizedException('User not found');
         }
-        console.log(user.password);
-        console.log(loginDto.password);
         if (!user.password || !loginDto.password) {
             throw new UnauthorizedException('Password is required');
         }
