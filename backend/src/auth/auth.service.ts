@@ -63,7 +63,7 @@ export class AuthService {
         try {
             const payload = await this.jwtService.verifyAsync(refreshTokenDto.oldToken);
             const user = await this.usersService.findOneByEmail(payload.email);
-
+            console.log(user);
             if (!user) {
                 throw new UnauthorizedException('User not found');
             }

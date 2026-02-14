@@ -7,16 +7,14 @@ import { JWT } from "next-auth/jwt";
 async function refreshAccessToken(token: JWT) {
     try {
         const response = await axios.post(process.env.NEXT_PUBLIC_API_URL + "/auth/refresh", {
-            oldToken: token.backendRefreshToken, // Send the refresh token as oldToken
-            email: token.email,
-            id: token.sub // User ID
+            oldToken: token.backendRefreshToken
         });
 
         return {
             ...token,
             backendAccessToken: response.data.access_token,
             backendRefreshToken: response.data.refresh_token,
-            backendAccessTokenExpires: Date.now() + 86400 * 1000, // 1 day
+            backendAccessTokenExpires: Date.now() + response.data.expires_in * 1000
         }
     } catch (error) {
         console.error("Error refreshing access token", error);
@@ -62,8 +60,6 @@ export const authOptions: AuthOptions = {
     events: {
         signOut: async ({ token }: { token: JWT }) => {
             // We make a post request to the backend to log out
-            console.log("logout");
-            console.log(token);
             if (token?.backendAccessToken) {
                 try {
                     await axios.post(process.env.NEXT_PUBLIC_API_URL + "/auth/logout", {}, { headers: { Authorization: `Bearer ${token?.backendAccessToken}` } });

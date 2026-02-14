@@ -16,10 +16,12 @@ export class AyudasTecnica {
     @Column({ name: 'Observacion', type: 'text' })
     observaciones: string;
 
-    @ManyToOne(() => Paciente, (Paciente) => Paciente.id)
+    @ManyToOne(() => Paciente, (paciente) => paciente.ayudasTecnicas)
+    @JoinColumn({ name: 'Paciente_UUID' })
     paciente: Paciente;
 
-    @ManyToOne(() => Usuario, (Usuario) => Usuario.id)
+    @ManyToOne(() => Usuario, (usuario) => usuario.ayudasTecnicas)
+    @JoinColumn({ name: 'Usuario_UUID' })
     usuario: Usuario;
 
     @ManyToOne(() => TipoAyuda, (tipoAyuda) => tipoAyuda.ayudasTecnica)

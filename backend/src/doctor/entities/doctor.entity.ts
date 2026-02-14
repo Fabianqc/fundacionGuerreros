@@ -14,14 +14,14 @@ export class Doctor {
     @Exclude()
     id: crypto.UUID;
 
-    @ManyToOne(() => Persona, (persona) => persona.id)
+    @ManyToOne(() => Persona, (persona) => persona.doctors)
     @JoinColumn({ name: 'Persona_UUID' })
     persona: Persona;
 
     @OneToMany(() => DoctorHorario, (DoctorHorario) => DoctorHorario.doctor)
     doctor_horario: DoctorHorario[];
 
-    @OneToMany(() => DoctorHasEspecialidade, (doctorHasEspecialidade) => doctorHasEspecialidade.doctor_id)
+    @OneToMany(() => DoctorHasEspecialidade, (doctorHasEspecialidade) => doctorHasEspecialidade.doctor)
     doctor_especialidades: DoctorHasEspecialidade[];
 
     @OneToMany(() => Consulta, (consulta) => consulta.doctor)

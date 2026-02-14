@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, ManyToOne, Column, JoinColumn } from "typeorm";
 import crypto from "crypto";
 import { Usuario } from "src/usuario/entities/usuario.entity";
 
@@ -13,24 +13,25 @@ export class AuditLog {
     @PrimaryGeneratedColumn('uuid', { name: 'UUID' })
     id: crypto.UUID;
 
-    @ManyToOne(()=> Usuario, (Usuario) => Usuario.id)
+    @ManyToOne(() => Usuario, (usuario) => usuario.auditLogs)
+    @JoinColumn({ name: 'Usuario_UUID' })
     usuario: Usuario;
 
-    @Column({name:"Accion", length: 100, type: 'enum', enum: Action})
+    @Column({ name: "Accion", type: 'enum', enum: Action })
     accion: Action;
 
-    @Column({name:"TablaAfectada", length: 100})
+    @Column({ name: "TablaAfectada", length: 100 })
     tabla_afectada: string;
 
-    @Column({name:"RegistroUUID", length: 100})
+    @Column({ name: "RegistroUUID"})
     registro_uuid: crypto.UUID;
 
-    @Column({name:"DatosAnteriores", type: 'json'})
+    @Column({ name: "DatosAnteriores", type: 'json' })
     datos_anteriores: string;
 
-    @Column({name:"DatosNuevos", type: 'json'})
+    @Column({ name: "DatosNuevos", type: 'json' })
     datos_nuevos: string;
 
-    @Column({name:"Fecha", type: 'timestamp with time zone'})
+    @Column({ name: "Fecha", type: 'timestamp with time zone' })
     fecha: Date;
 }
