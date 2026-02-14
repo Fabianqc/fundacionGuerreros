@@ -2,6 +2,9 @@ import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from "typeorm";
 import { Exclude } from "class-transformer";
 import * as crypto from "crypto";
 import { Usuario } from "src/usuario/entities/usuario.entity";
+import { Doctor } from "../../doctor/entities/doctor.entity";
+import { Paciente } from "../../paciente/entities/paciente.entity";
+import { NucleoFamiliar } from "../../nucleo-familiar/entities/nucleo-familiar.entity";
 
 @Entity('Personas')
 export class Persona {
@@ -33,5 +36,14 @@ export class Persona {
 
     @OneToMany(() => Usuario, (usuario) => usuario.persona)
     usuarios: Usuario[];
+
+    @OneToMany(() => Doctor, (doctor) => doctor.persona)
+    doctors: Doctor[];
+
+    @OneToMany(() => Paciente, (paciente) => paciente.persona)
+    pacientes: Paciente[];
+
+    @OneToMany(() => NucleoFamiliar, (nucleoFamiliar) => nucleoFamiliar.persona)
+    nucleoFamiliar: NucleoFamiliar[];
 
 }

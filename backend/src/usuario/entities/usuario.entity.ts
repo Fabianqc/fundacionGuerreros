@@ -1,7 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import * as crypto from 'crypto';
 import { Persona } from 'src/personas/entities/persona.entity';
 import { Exclude } from 'class-transformer';
+import { AuditLog } from 'src/audit-log/entities/audit-log.entity';
+import { Consulta } from 'src/consulta/entities/consulta.entity';
+import { AyudasTecnica } from 'src/ayudas-tecnicas/entities/ayudas-tecnica.entity';
+import { Paciente } from 'src/paciente/entities/paciente.entity';
 
 
 @Entity('Usuario')
@@ -26,4 +30,16 @@ export class Usuario {
 
     @Column({ name: 'Nivel', nullable: false })
     nivel: number;
+
+    @OneToMany(() => AuditLog, (auditLog) => auditLog.usuario)
+    auditLogs: AuditLog[];
+
+    @OneToMany(() => Consulta, (consulta) => consulta.usuario)
+    consultas: Consulta[];
+
+    @OneToMany(() => AyudasTecnica, (ayudasTecnica) => ayudasTecnica.usuario)
+    ayudasTecnicas: AyudasTecnica[];
+
+    @OneToMany(() => Paciente, (paciente) => paciente.usuario)
+    pacientes: Paciente[];
 }
