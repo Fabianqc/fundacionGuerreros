@@ -14,6 +14,8 @@ import {
     Eye,
     CalendarClock
 } from "lucide-react";
+import CreateConsultationModal from "./components/CreateConsultationModal";
+import { useState } from "react";
 
 export default function ConsultationsPage() {
     // Mock Data
@@ -85,8 +87,16 @@ export default function ConsultationsPage() {
         }
     };
 
+    // State for Modal
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
     return (
         <div className="max-w-7xl mx-auto">
+            <CreateConsultationModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+            />
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
@@ -94,7 +104,10 @@ export default function ConsultationsPage() {
                     <p className="text-gray-500 mt-1">Programación y control de citas médicas.</p>
                 </div>
 
-                <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-purple-200 transition-all hover:scale-105 active:scale-95">
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-purple-200 transition-all hover:scale-105 active:scale-95"
+                >
                     <Plus className="w-5 h-5" />
                     <span>Nueva Consulta</span>
                 </button>

@@ -14,6 +14,8 @@ import {
     Phone,
     Mail
 } from "lucide-react";
+import CreatePatientModal from "./components/CreatePatientModal";
+import { useState } from "react";
 
 export default function PatientsPage() {
     // Mock Data
@@ -79,8 +81,17 @@ export default function PatientsPage() {
         }
     };
 
+    // State for Modal
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
     return (
         <div className="max-w-7xl mx-auto">
+            {/* Modal */}
+            <CreatePatientModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+            />
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
@@ -88,7 +99,10 @@ export default function PatientsPage() {
                     <p className="text-gray-500 mt-1">Gestiona el registro clínico de la fundación.</p>
                 </div>
 
-                <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-purple-200 transition-all hover:scale-105 active:scale-95">
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-purple-200 transition-all hover:scale-105 active:scale-95"
+                >
                     <Plus className="w-5 h-5" />
                     <span>Nuevo Paciente</span>
                 </button>
@@ -101,7 +115,7 @@ export default function PatientsPage() {
                     <input
                         type="text"
                         placeholder="Buscar por nombre, cédula..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                     />
                 </div>
 

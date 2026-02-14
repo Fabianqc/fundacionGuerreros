@@ -1,27 +1,31 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
     Plus,
     Activity,
     Users,
-    TrendingUp,
-    MoreVertical,
     Edit,
     Trash2,
-    AlertCircle
+    AlertCircle,
+    Check,
+    Loader2
 } from "lucide-react";
+
+interface Pathology {
+    id: number | string;
+    name: string;
+    description: string;
+    category: string;
+    patientsCount: number;
+    riskLevel: string;
+}
 
 export default function PathologiesPage() {
     // Mock Data
-    const stats = [
-        { title: "Hipertensión", count: 45, trend: "+12%", color: "bg-red-500" },
-        { title: "Diabetes T2", count: 38, trend: "+5%", color: "bg-orange-500" },
-        { title: "Asma", count: 22, trend: "-2%", color: "bg-blue-500" },
-    ];
-
-    const pathologies = [
+    const [pathologies, setPathologies] = useState<Pathology[]>([
         {
             id: 1,
             name: "Hipertensión Arterial",
@@ -62,7 +66,32 @@ export default function PathologiesPage() {
             patientsCount: 12,
             riskLevel: "Bajo"
         }
-    ];
+    ]);
+
+    const [searchTerm, setSearchTerm] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
+
+    const filteredPathologies = pathologies.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const handleCreate = () => {
+        setIsCreating(true);
+        // Simulate API call
+        setTimeout(() => {
+            const newPathology: Pathology = {
+                id: Date.now(),
+                name: searchTerm,
+                description: "Nueva patología registrada",
+                category: "General",
+                patientsCount: 0,
+                riskLevel: "Bajo"
+            };
+            setPathologies(prev => [newPathology, ...prev]);
+            setSearchTerm("");
+            setIsCreating(false);
+        }, 800);
+    };
 
     const getRiskColor = (level: string) => {
         switch (level) {
@@ -74,126 +103,135 @@ export default function PathologiesPage() {
     };
 
     return (
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-6">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Patologías</h1>
-                    <p className="text-gray-500 mt-1">Administración de condiciones médicas y estadísticas.</p>
-                </div>
-
-                <button className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-medium shadow-lg shadow-purple-200 transition-all hover:scale-105 active:scale-95">
-                    <Plus className="w-5 h-5" />
-                    <span>Nueva Patología</span>
-                </button>
-            </div>
-
-            {/* Top Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                {stats.map((stat, i) => (
-                    <motion.div
-                        key={stat.title}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between relative overflow-hidden group"
-                    >
-                        <div className="relative z-10">
-                            <p className="text-sm font-medium text-gray-500 mb-1">Más Común #{i + 1}</p>
-                            <h3 className="text-2xl font-bold text-gray-900">{stat.title}</h3>
-                            <div className="flex items-center gap-2 mt-2 text-sm">
-                                <Users className="w-4 h-4 text-gray-400" />
-                                <span className="font-semibold text-gray-700">{stat.count} pacientes</span>
-                                <span className="text-green-600 bg-green-50 px-1.5 py-0.5 rounded text-xs font-bold">{stat.trend}</span>
-                            </div>
-                        </div>
-                        <div className={`absolute right-0 top-0 w-24 h-full ${stat.color} opacity-10 transform skew-x-12 translate-x-4`} />
-                        <div className={`p-3 rounded-xl ${stat.color} text-white shadow-lg`}>
-                            <Activity className="w-6 h-6" />
-                        </div>
-                    </motion.div>
-                ))}
+            <div>
+                <h1 className="text-3xl font-bold text-gray-900">Patologías</h1>
+                <p className="text-gray-500 mt-1">Administración de condiciones clínicas.</p>
             </div>
 
             {/* Main Content: Search + List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Toolbar */}
-                <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <AlertCircle className="w-5 h-5 text-purple-600" /> Listado General
-                    </h2>
-                    <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[600px] flex flex-col">
+                {/* Enhanced Search Toolbar */}
+                <div className="p-6 border-b border-gray-100 bg-gray-50/30">
+                    <div className="max-w-2xl mx-auto relative">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Buscar patología..."
-                            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar patología para gestionar o crear..."
+                            className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                         />
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoría</th>
-                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Pacientes</th>
-                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Nivel de Riesgo</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {pathologies.map((pathology) => (
-                                <motion.tr
-                                    key={pathology.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
-                                    className="group"
+                        {/* Inline Create Action */}
+                        <AnimatePresence>
+                            {searchTerm && filteredPathologies.length === 0 && (
+                                <motion.button
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    onClick={handleCreate}
+                                    disabled={isCreating}
+                                    className="absolute right-2 top-2 bottom-2 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-md transition-all flex items-center gap-2"
                                 >
-                                    <td className="px-6 py-4">
-                                        <div>
-                                            <p className="font-semibold text-gray-900">{pathology.name}</p>
-                                            <p className="text-sm text-gray-500 line-clamp-1">{pathology.description}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
-                                            {pathology.category}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium text-sm">
-                                            <Users className="w-3.5 h-3.5" />
-                                            {pathology.patientsCount}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getRiskColor(pathology.riskLevel)}`}>
-                                            {pathology.riskLevel}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                                                <Edit className="w-4 h-4" />
-                                            </button>
-                                            <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    {isCreating ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Creando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Plus className="w-4 h-4" />
+                                            Crear "{searchTerm}"
+                                        </>
+                                    )}
+                                </motion.button>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                    <p className="text-center text-xs text-gray-400 mt-3">
+                        Si la patología no existe, escríbela y presiona "Crear".
+                    </p>
                 </div>
 
-                {/* Pagination Info */}
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/30 text-center">
-                    <span className="text-xs text-gray-400">Mostrando 5 de 42 patologías registradas</span>
+                {/* List Content */}
+                <div className="flex-1 overflow-x-auto">
+                    {filteredPathologies.length > 0 ? (
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoría</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Pacientes</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Nivel de Riesgo</th>
+                                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                <AnimatePresence>
+                                    {filteredPathologies.map((pathology) => (
+                                        <motion.tr
+                                            key={pathology.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            layout
+                                            className="group hover:bg-gray-50/50 transition-colors"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div>
+                                                    <p className="font-semibold text-gray-900">{pathology.name}</p>
+                                                    <p className="text-sm text-gray-500 line-clamp-1">{pathology.description}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+                                                    {pathology.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium text-sm">
+                                                    <Users className="w-3.5 h-3.5" />
+                                                    {pathology.patientsCount}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getRiskColor(pathology.riskLevel)}`}>
+                                                    {pathology.riskLevel}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                        <Edit className="w-4 h-4" />
+                                                    </button>
+                                                    <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </AnimatePresence>
+                            </tbody>
+                        </table>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-64 text-center p-6">
+                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                                <Search className="w-8 h-8 text-gray-300" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">No se encontraron patologías</h3>
+                            <p className="text-gray-500 max-w-sm mt-1">
+                                No hay resultados para "{searchTerm}". Usa el botón superior para crearla.
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Info */}
+                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/30 flex justify-between items-center text-xs text-gray-400">
+                    <span>Total: {filteredPathologies.length} patologías</span>
+                    <span>Mostrando resultados filtrados</span>
                 </div>
             </div>
         </div>

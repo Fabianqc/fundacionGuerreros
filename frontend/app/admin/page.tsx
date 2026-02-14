@@ -15,13 +15,25 @@ import {
     Settings
 } from "lucide-react";
 
+import { useState } from "react";
+import CreateConsultationModal from "./consultations/components/CreateConsultationModal";
+
 export default function AdminDashboard() {
     // Mock Data for Charts/Stats
     const dailyAdmissions = { count: 24, trend: "+12%" };
 
+    // State for Quick Actions
+    const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
+
     // Quick Actions Configuration
     const actions = [
-        { title: "Nueva Consulta", icon: Stethoscope, color: "bg-blue-500", href: "/admin/consultations/new" },
+        {
+            title: "Nueva Consulta",
+            icon: Stethoscope,
+            color: "bg-blue-500",
+            href: "#",
+            onClick: () => setIsConsultationModalOpen(true)
+        },
         { title: "Administrar Patologías", icon: Activity, color: "bg-purple-500", href: "/admin/pathologies" },
         { title: "Añadir Ayudas Técnicas", icon: Accessibility, color: "bg-teal-500", href: "/admin/equipments/new" },
         { title: "Añadir Doctor", icon: ShieldPlus, color: "bg-indigo-500", href: "/admin/doctors/new" },
@@ -38,6 +50,12 @@ export default function AdminDashboard() {
 
     return (
         <div className="max-w-7xl mx-auto">
+            {/* Modals */}
+            <CreateConsultationModal
+                isOpen={isConsultationModalOpen}
+                onClose={() => setIsConsultationModalOpen(false)}
+            />
+
             {/* Header Greeting */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-900">Hola, Admin 👋</h1>
@@ -111,9 +129,16 @@ export default function AdminDashboard() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {actions.map((action, index) => (
-                            <motion.a
+                            <motion.div
                                 key={action.title}
-                                href={action.href}
+                                onClick={(e) => {
+                                    if (action.onClick) {
+                                        e.preventDefault();
+                                        action.onClick();
+                                    } else if (action.href) {
+                                        window.location.href = action.href;
+                                    }
+                                }}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 className="group bg-white p-5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 cursor-pointer"
@@ -128,7 +153,7 @@ export default function AdminDashboard() {
                                 <div className="ml-auto opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all">
                                     <Plus className="w-5 h-5 text-gray-300" />
                                 </div>
-                            </motion.a>
+                            </motion.div>
                         ))}
                     </div>
                 </div>
