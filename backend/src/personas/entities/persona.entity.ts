@@ -13,7 +13,7 @@ export class Persona {
     @Exclude()
     id: crypto.UUID;
 
-    @Column({ name: 'Fullname', nullable: false, type: 'varchar', length: 150 })
+    @Column({ name: 'FullName', nullable: false, type: 'varchar', length: 150 })
     fullname: string;
 
     @Column({ name: 'Cedula', nullable: false, type: 'varchar', length: 12 })

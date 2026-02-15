@@ -1,10 +1,12 @@
 "use client";
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, CheckCircle, AlertCircle, Loader2, Save } from "lucide-react";
 import PersonForm from "./PersonForm";
 import PatientForm from "./PatientForm";
+import { CreatePersonaInterface } from "@/types/create-persona.Interface";
+import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { handleAxiosError } from "@/lib/handleAxiosError";
 
 interface CreatePatientModalProps {
     isOpen: boolean;
@@ -17,42 +19,50 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
     const [cedula, setCedula] = useState("");
     const [tipoCedula, setTipoCedula] = useState("V");
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
-    const [personData, setPersonData] = useState<any>(null);
+    const [personData, setPersonData] = useState<CreatePersonaInterface>({} as CreatePersonaInterface);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSearch = async () => {
-        if (!cedula) return;
+        if (!cedula || !tipoCedula) return;
         setSearchStatus("searching");
 
-        // MOCK API CALL
-        setTimeout(() => {
-            // Simulating "Found" for a specific cedula, e.g., "12345678"
-            if (cedula === "12345678") {
-                setPersonData({
-                    fullName: "María González",
-                    id: 1 // Mock ID
-                });
+        try {
+            const response = await axiosClientInstance.get(`/personas/${tipoCedula}/${cedula}`);
+            console.log(response.data);
+
+            if (response.data) {
+                setPersonData(response.data);
                 setSearchStatus("found");
             } else {
                 setSearchStatus("not-found");
-                setPersonData(null);
             }
-        }, 800);
+        } catch (error) {
+            setError(handleAxiosError(error));
+            setPersonData({} as CreatePersonaInterface);
+            setSearchStatus("not-found");
+        }
+
     };
 
-    const handlePersonSubmit = (data: any) => {
-        // Mock saving person
-        console.log("Saving new person:", data);
-        setPersonData({ ...data, id: 999 }); // Mock ID for new person
+    const handlePersonSubmit = (data: CreatePersonaInterface) => {
+        if (!data) {
+            setSearchStatus("not-found");
+            return;
+        };
+
+        setPersonData(data);
         setSearchStatus("found");
     };
 
+    const handleReset = () => {
+        setSearchStatus("idle");
+        setPersonData({} as CreatePersonaInterface);
+        setCedula("");
+        setError(null);
+    };
+
     const handleSubmitPatient = (data: any) => {
-        console.log("Saving patient data:", {
-            personId: personData.id,
-            ...data
-        });
         onClose();
-        // Here you would refresh the list or show a success toast
     };
 
     return (
@@ -131,12 +141,22 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
                                         </div>
                                         <button
                                             onClick={handleSearch}
-                                            disabled={!cedula || searchStatus === "searching"}
+                                            disabled={!cedula || searchStatus === "searching" || searchStatus === "found"}
                                             className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
                                         >
                                             <Search className="w-4 h-4" />
                                             Buscar
                                         </button>
+
+                                        {(searchStatus !== "idle" || cedula) && (
+                                            <button
+                                                onClick={handleReset}
+                                                className="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 font-medium transition-colors flex items-center gap-2"
+                                                title="Limpiar búsqueda"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
 
                                     {/* Status Feedback */}
@@ -148,7 +168,7 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
                                         )}
                                         {searchStatus === "found" && (
                                             <span className="text-green-600 flex items-center gap-1 animate-fadeIn">
-                                                Persona encontrada: <strong>{personData.fullName}</strong>
+                                                Persona encontrada: <strong>{personData?.fullname}</strong>
                                             </span>
                                         )}
                                     </div>
@@ -166,7 +186,7 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
                                             <PersonForm
                                                 initialData={{ cedula, tipoCedula }}
                                                 onSubmit={handlePersonSubmit}
-                                                onCancel={() => setSearchStatus("idle")}
+                                                onCancel={handleReset}
                                             />
                                         </motion.div>
                                     )}
@@ -178,8 +198,9 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
                                             animate={{ opacity: 1, y: 0 }}
                                         >
                                             <PatientForm
+                                                initialData={personData}
                                                 onSubmit={handleSubmitPatient}
-                                                onCancel={onClose}
+                                                onCancel={handleReset}
                                             />
                                         </motion.div>
                                     )}

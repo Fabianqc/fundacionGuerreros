@@ -21,7 +21,8 @@ export class AuthService {
         const payload = { email: email, sub: id };
         return {
             access_token: this.jwtService.sign(payload, { expiresIn: '1h' }),
-            refresh_token: this.jwtService.sign(payload, { expiresIn: '1d' }),
+            refresh_token: this.jwtService.sign(payload, { expiresIn: '7d' }),
+            expires_in: 3600,
         };
     }
 
@@ -61,7 +62,9 @@ export class AuthService {
 
     async refreshToken(refreshTokenDto: RefreshTokenDto) {
         try {
-            const payload = await this.jwtService.verifyAsync(refreshTokenDto.oldToken);
+            const payload = await this.jwtService.verifyAsync(refreshTokenDto.oldToken, {
+                secret: process.env.JWT_SECRET,
+            });
             const user = await this.usersService.findOneByEmail(payload.email);
             console.log(user);
             if (!user) {
@@ -75,6 +78,7 @@ export class AuthService {
             this.eventusersessionService.createSessionRefreshEvent(user);
             return this.createToken(user.email, user.id);
         } catch (error) {
+            console.error("Refresh Token Error:", error);
             throw new UnauthorizedException('Invalid or expired Refresh Token');
         }
     }

@@ -2,69 +2,82 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Save, User, Stethoscope, Phone, Mail, Award, CreditCard } from "lucide-react";
-
-interface Doctor {
-    id: string;
-    fullName: string;
-    cedula: string;
-    phone: string;
-    email: string;
-    speciality: string;
-    licenseNumber: string; // Numero de Colegio de Medicos
-    status: 'Activo' | 'Inactivo';
-}
+import { X, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import PersonForm from "../../patients/components/PersonForm"; // Reusing PersonForm
+import DoctorForm from "./DoctorForm";
 
 interface DoctorModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: Omit<Doctor, "id">) => void;
-    initialData?: Doctor | null;
+    onSubmit: (data: any) => void;
+    initialData?: any;
 }
 
-export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: DoctorModalProps) {
-    const [formData, setFormData] = useState({
-        fullName: "",
-        cedula: "",
-        phone: "",
-        email: "",
-        speciality: "",
-        licenseNumber: "",
-        status: "Activo" as const
-    });
+type SearchStatus = "idle" | "searching" | "found" | "not-found";
 
+export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: DoctorModalProps) {
+    const [cedula, setCedula] = useState("");
+    const [tipoCedula, setTipoCedula] = useState("V");
+    const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
+    const [personData, setPersonData] = useState<any>(null);
+
+    // Initial Data Handler (For Editing)
     useEffect(() => {
-        if (initialData) {
-            setFormData({
+        if (initialData && isOpen) {
+            // Pre-fill data logic simulating a "Found" state
+            setPersonData({
                 fullName: initialData.fullName,
                 cedula: initialData.cedula,
                 phone: initialData.phone,
                 email: initialData.email,
-                speciality: initialData.speciality,
-                licenseNumber: initialData.licenseNumber,
-                status: initialData.status
+                id: "existing-id"
             });
-        } else {
-            setFormData({
-                fullName: "",
-                cedula: "",
-                phone: "",
-                email: "",
-                speciality: "",
-                licenseNumber: "",
-                status: "Activo"
-            });
+            setCedula(initialData.cedula?.split('-')[1] || "");
+            setTipoCedula(initialData.cedula?.split('-')[0] || "V");
+            setSearchStatus("found");
+        } else if (!isOpen) {
+            // Reset on close
+            setSearchStatus("idle");
+            setPersonData(null);
+            setCedula("");
         }
     }, [initialData, isOpen]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+    const handleSearch = async () => {
+        if (!cedula) return;
+        setSearchStatus("searching");
+
+        // MOCK API CALL
+        setTimeout(() => {
+            if (cedula === "12345678") {
+                setPersonData({
+                    fullName: "María González",
+                    cedula: `${tipoCedula}-${cedula}`,
+                    phone: "0412-1234567",
+                    email: "maria@example.com",
+                    id: 1
+                });
+                setSearchStatus("found");
+            } else {
+                setSearchStatus("not-found");
+                setPersonData(null);
+            }
+        }, 600);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSubmit(formData);
+    const handlePersonSubmit = (data: any) => {
+        console.log("Saving new person:", data);
+        setPersonData({ ...data, id: `new-${Date.now()}` });
+        setSearchStatus("found");
+    };
+
+    const handleSubmitDoctor = (doctorSpecificData: any) => {
+        // Combine Person Data + Doctor Data
+        const finalData = {
+            ...personData,
+            ...doctorSpecificData
+        };
+        onSubmit(finalData);
         onClose();
     };
 
@@ -77,16 +90,16 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col"
+                        className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
                     >
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                             <div>
-                                <h3 className="text-xl font-bold text-gray-900">
-                                    {initialData ? "Editar Doctor" : "Registrar Nuevo Doctor"}
-                                </h3>
+                                <h2 className="text-xl font-bold text-gray-900">
+                                    {initialData ? "Editar Doctor" : "Registrar Doctor"}
+                                </h2>
                                 <p className="text-sm text-gray-500">
-                                    {initialData ? "Actualice la información profesional." : "Ingrese los datos del profesional de la salud."}
+                                    {initialData ? "Actualice los datos." : "Busque una persona existente o regístrela."}
                                 </p>
                             </div>
                             <button
@@ -97,146 +110,123 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                             </button>
                         </div>
 
-                        {/* Form */}
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-
-                            {/* Personal Info Section */}
-                            <div className="space-y-4">
-                                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-2">
-                                    <User className="w-4 h-4 text-purple-600" /> Información Personal
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">Nombre Completo</label>
+                        {/* Content */}
+                        <div className="p-6 overflow-y-auto custom-scrollbar">
+                            {/* Search Section */}
+                            <div className="mb-6">
+                                <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                    Buscar Persona (Cédula)
+                                </label>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={tipoCedula}
+                                        onChange={(e) => setTipoCedula(e.target.value)}
+                                        className="px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-gray-50/50"
+                                        disabled={searchStatus === "found" || !!initialData}
+                                    >
+                                        <option value="V">V</option>
+                                        <option value="E">E</option>
+                                        <option value="J">J</option>
+                                        <option value="P">P</option>
+                                    </select>
+                                    <div className="relative flex-1">
                                         <input
                                             type="text"
-                                            name="fullName"
-                                            value={formData.fullName}
-                                            onChange={handleChange}
-                                            placeholder="Dr. Juan Pérez"
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                                            required
+                                            value={cedula}
+                                            onChange={(e) => setCedula(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                            placeholder="Ej: 12345678"
+                                            className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
+                                            disabled={searchStatus === "found" || !!initialData}
                                         />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">Cédula de Identidad</label>
-                                        <div className="relative">
-                                            <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                name="cedula"
-                                                value={formData.cedula}
-                                                onChange={handleChange}
-                                                placeholder="V-12345678"
-                                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                                                required
-                                            />
+                                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                            {searchStatus === "searching" && (
+                                                <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                                            )}
+                                            {searchStatus === "found" && (
+                                                <CheckCircle className="w-5 h-5 text-green-500" />
+                                            )}
+                                            {searchStatus === "not-found" && (
+                                                <AlertCircle className="w-5 h-5 text-orange-500" />
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">Teléfono</label>
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handleChange}
-                                                placeholder="0414-1234567"
-                                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                                                required
-                                            />
+                                    <button
+                                        onClick={handleSearch}
+                                        disabled={!cedula || searchStatus === "searching" || searchStatus === "found" || !!initialData}
+                                        className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        <Search className="w-4 h-4" />
+                                        Buscar
+                                    </button>
+                                </div>
+
+                                {/* Status Feedback */}
+                                <div className="mt-2 text-sm min-h-[20px]">
+                                    {searchStatus === "not-found" && (
+                                        <span className="text-orange-600 flex items-center gap-1 animate-fadeIn">
+                                            Persona no encontrada. Por favor complete el registro abajo.
+                                        </span>
+                                    )}
+                                    {searchStatus === "found" && personData && (
+                                        <div className="p-3 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between">
+                                            <div>
+                                                <span className="text-green-800 font-medium flex items-center gap-2">
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    Persona Seleccionada:
+                                                </span>
+                                                <p className="text-green-700 text-sm mt-1 pl-6">
+                                                    {personData.fullName} <span className="text-green-600/70">({personData.cedula})</span>
+                                                </p>
+                                            </div>
+                                            {!initialData && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSearchStatus("idle");
+                                                        setPersonData(null);
+                                                    }}
+                                                    className="text-xs text-green-600 hover:text-green-800 underline"
+                                                >
+                                                    Cambiar
+                                                </button>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">Correo Electrónico</label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="email"
-                                                name="email"
-                                                value={formData.email}
-                                                onChange={handleChange}
-                                                placeholder="doctor@ejemplo.com"
-                                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* Professional Info Section */}
-                            <div className="space-y-4">
-                                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2 border-b border-gray-100 pb-2">
-                                    <Stethoscope className="w-4 h-4 text-purple-600" /> Información Profesional
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">Especialidad</label>
-                                        <select
-                                            name="speciality"
-                                            value={formData.speciality}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white"
-                                            required
-                                        >
-                                            <option value="">Seleccionar Especialidad</option>
-                                            <option value="Medicina General">Medicina General</option>
-                                            <option value="Cardiología">Cardiología</option>
-                                            <option value="Pediatría">Pediatría</option>
-                                            <option value="Traumatología">Traumatología</option>
-                                            <option value="Ginecología">Ginecología</option>
-                                            <option value="Psicología">Psicología</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">N° Colegio de Médicos</label>
-                                        <div className="relative">
-                                            <Award className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                name="licenseNumber"
-                                                value={formData.licenseNumber}
-                                                onChange={handleChange}
-                                                placeholder="Ej: 12345"
-                                                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-medium text-gray-700">Estado</label>
-                                        <select
-                                            name="status"
-                                            value={formData.status}
-                                            onChange={handleChange}
-                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white"
-                                        >
-                                            <option value="Activo">Activo</option>
-                                            <option value="Inactivo">Inactivo</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Dynamic Forms */}
+                            <div className="space-y-6">
+                                {/* Case 1: Person NOT Found -> Create Person */}
+                                {searchStatus === "not-found" && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: "auto" }}
+                                    >
+                                        <PersonForm
+                                            initialData={{ cedula, tipoCedula }}
+                                            onSubmit={handlePersonSubmit}
+                                            onCancel={() => setSearchStatus("idle")}
+                                        />
+                                    </motion.div>
+                                )}
 
-                            <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-200 transition-all"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center gap-2"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    {initialData ? "Guardar Cambios" : "Completar Registro"}
-                                </button>
+                                {/* Case 2: Person Found -> Details + Doctor Form */}
+                                {searchStatus === "found" && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                    >
+                                        <DoctorForm
+                                            onSubmit={handleSubmitDoctor}
+                                            onCancel={onClose}
+                                            initialData={initialData} // Pass initial doctor data if editing
+                                            submitLabel={initialData ? "Guardar Cambios" : "Registrar Doctor"}
+                                        />
+                                    </motion.div>
+                                )}
                             </div>
-                        </form>
+                        </div>
                     </motion.div>
                 </div>
             )}

@@ -2,23 +2,29 @@
 
 import { useState } from "react";
 import { User, Phone, MapPin, Mail, Calendar } from "lucide-react";
-
+import AddressAutocomplete from "./AddressAutocomplete";
+import { CreatePersonaInterface } from "@/types/create-persona.Interface";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+import axiosClientInstance from "@/lib/AxiosClientInstance";
 interface PersonFormProps {
     initialData?: {
         cedula?: string;
         tipoCedula?: string;
     };
-    onSubmit: (data: any) => void;
+    onSubmit: (data: CreatePersonaInterface) => void;
     onCancel: () => void;
 }
 
 export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFormProps) {
-    const [formData, setFormData] = useState({
-        fullName: "",
-        tipoCedula: initialData?.tipoCedula || "V",
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const [formData, setFormData] = useState<CreatePersonaInterface>({
+        fullname: "",
+        tipo_cedula: initialData?.tipoCedula || "V",
         cedula: initialData?.cedula || "",
         telefono: "",
-        fechaNacimiento: "",
+        nacimiento: new Date(),
         sexo: "", // Changed from genero to match schema implication or keep consistent
         direccion: ""
     });
@@ -28,9 +34,35 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(formData);
+        setLoading(true);
+        setError(null);
+        console.log(formData);
+        try {
+            if (!formData.fullname || !formData.telefono || !formData.nacimiento || !formData.sexo || !formData.direccion) {
+                setError("Todos los campos son obligatorios");
+                return;
+            }
+            const data: CreatePersonaInterface = {
+                fullname: formData.fullname,
+                tipo_cedula: formData.tipo_cedula,
+                cedula: formData.cedula,
+                telefono: formData.telefono,
+                nacimiento: new Date(formData.nacimiento),
+                sexo: formData.sexo,
+                direccion: formData.direccion
+            }
+
+            const response = await axiosClientInstance.post("/personas", data);
+            onSubmit(response.data);
+        } catch (error) {
+            setError(handleAxiosError(error));
+            console.log(error);
+        } finally {
+            setLoading(false);
+            console.log(error);
+        }
     };
 
     return (
@@ -45,8 +77,8 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                     <label className="text-xs font-medium text-gray-500">Documento de Identidad</label>
                     <div className="flex gap-2">
                         <select
-                            name="tipoCedula"
-                            value={formData.tipoCedula}
+                            name="tipo_cedula"
+                            value={formData.tipo_cedula}
                             onChange={handleChange}
                             className="w-20 px-2 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                         >
@@ -76,9 +108,16 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="date"
-                            name="fechaNacimiento"
-                            value={formData.fechaNacimiento}
-                            onChange={handleChange}
+                            name="nacimiento"
+                            value={
+                                formData.nacimiento instanceof Date && !isNaN(formData.nacimiento.getTime())
+                                    ? formData.nacimiento.toISOString().split('T')[0]
+                                    : ""
+                            }
+                            onChange={(e) => {
+                                const dateValue = e.target.valueAsDate || new Date(e.target.value);
+                                setFormData(prev => ({ ...prev, nacimiento: dateValue }));
+                            }}
                             className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                             required
                         />
@@ -89,8 +128,8 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                     <label className="text-xs font-medium text-gray-700">Nombre Completo</label>
                     <input
                         type="text"
-                        name="fullName"
-                        value={formData.fullName}
+                        name="fullname"
+                        value={formData.fullname}
                         onChange={handleChange}
                         placeholder="Ej: Juan Carlos Pérez López"
                         className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
@@ -130,18 +169,17 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                 <div className="md:col-span-2 space-y-1">
                     <label className="text-xs font-medium text-gray-700">Dirección</label>
                     <div className="relative">
-                        <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                        <textarea
-                            name="direccion"
+                        <AddressAutocomplete
                             value={formData.direccion}
-                            onChange={handleChange}
-                            rows={2}
-                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
+                            onChange={(val) => setFormData(prev => ({ ...prev, direccion: val }))}
+                            placeholder="Ej: Calle 3, Sector..."
                         />
                     </div>
                 </div>
             </div>
-
+            <div>
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+            </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-4">
                 <button
                     type="button"

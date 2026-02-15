@@ -4,6 +4,7 @@ import { Usuario } from "../../usuario/entities/usuario.entity";
 import { NucleoFamiliar } from "../../nucleo-familiar/entities/nucleo-familiar.entity";
 import { Consulta } from "../../consulta/entities/consulta.entity";
 import { AyudasTecnica } from "../../ayudas-tecnicas/entities/ayudas-tecnica.entity";
+import * as crypto from "crypto";
 
 export enum EstadoCivil {
     SOLTERO = "SOLTERO",
@@ -30,7 +31,7 @@ export enum GradoInstruccion {
 export class Paciente {
 
     @PrimaryGeneratedColumn('uuid', { name: 'UUID' })
-    id: string;
+    id: crypto.UUID;
 
     @ManyToOne(() => Persona)
     @JoinColumn({ name: 'Personas_UUID' })
@@ -44,10 +45,10 @@ export class Paciente {
     })
     estadoCivil: EstadoCivil;
 
-    @Column({ name: 'LugarNacimient', length: 100, nullable: true })
+    @Column({ name: 'LugarNacimiento', length: 1000, nullable: true })
     lugarNacimiento: string;
 
-    @Column({ name: 'PaisNacimiento', length: 100, nullable: true })
+    @Column({ name: 'PaisNacimiento', length: 1000, nullable: true })
     paisNacimiento: string;
 
     @Column({ name: 'Ocupacion', length: 100, nullable: true })
@@ -56,7 +57,7 @@ export class Paciente {
     @Column({
         type: 'enum',
         enum: GradoInstruccion,
-        name: 'GradoInstruccio',
+        name: 'GradoInstruccion',
         nullable: true
     })
     gradoInstruccion: GradoInstruccion;
@@ -64,7 +65,7 @@ export class Paciente {
     @Column({ name: 'Profesion', length: 100, nullable: true })
     profesion: string;
 
-    @Column({ name: 'Salario Mensual', length: 45, nullable: true })
+    @Column({ name: 'Salario_Mensual', length: 45, nullable: true })
     salarioMensual: string;
 
     @Column({ name: 'CarnetPatria', type: 'boolean', default: false, nullable: true })
@@ -79,10 +80,22 @@ export class Paciente {
     @Column({ name: 'TipoVivienda', length: 100, nullable: true })
     tipoVivienda: string;
 
-    @Column({ name: 'DescripcionVivi', length: 100, nullable: true })
+    @Column({ name: 'DescripcionVivienda', length: 1000, nullable: true })
     descripcionVivienda: string;
 
-    @Column({ name: 'TenenciaViviend', length: 100, nullable: true })
+    @Column({ name: 'NHabitaciones' })
+    nHabitaciones: number;
+
+    @Column({ name: 'NBannos' })
+    nBanos: number;
+
+    @Column({ name: 'Cocina' })
+    cocina: boolean;
+
+    @Column({ name: "Sala_Comedor" })
+    salaComedor: boolean;
+
+    @Column({ name: 'TenenciaVivienda', length: 100, nullable: true })
     tenenciaVivienda: string;
 
     @Column({ name: 'Observaciones', length: 1000, nullable: true })

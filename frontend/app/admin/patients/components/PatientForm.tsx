@@ -1,17 +1,30 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save } from "lucide-react";
+import { Save, UserPlus } from "lucide-react";
+import AddressAutocomplete from "./AddressAutocomplete";
+import { CreatePacienteInterface } from "@/types/create-paciente.dto";
+import { CreatePersonaInterface } from "@/types/create-persona.Interface";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+import axiosClientInstance from "@/lib/AxiosClientInstance";
+
+
 
 interface PatientFormProps {
-    onSubmit: (data: any) => void;
+    onSubmit: (data: CreatePacienteInterface) => void;
     onCancel: () => void;
-    initialData?: any;
+    initialData: CreatePersonaInterface;
     submitLabel?: string;
 }
 
 export default function PatientForm({ onSubmit, onCancel, initialData, submitLabel = "Crear Paciente" }: PatientFormProps) {
-    const [patientData, setPatientData] = useState({
+    const [loading, setLoading] = useState(false);
+    const [isNewPatient, setIsNewPatient] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const [patientData, setPatientData] = useState<CreatePacienteInterface>({
+        cedula: initialData?.cedula || "",
+        tipo_cedula: initialData?.tipo_cedula || "",
         estadoCivil: "",
         lugarNacimiento: "",
         paisNacimiento: "",
@@ -24,30 +37,125 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
         alergico: "",
         tipoVivienda: "",
         descripcionVivienda: "",
+        nHabitaciones: 0,
+        nBanos: 0,
+        cocina: false,
+        salaComedor: false,
         tenenciaVivienda: "",
         observaciones: ""
     });
 
-    useEffect(() => {
-        if (initialData) {
-            setPatientData(prev => ({ ...prev, ...initialData }));
-        }
-    }, [initialData]);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        const { name, value } = e.target;
-        setPatientData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target;
+        setPatientData(prev => ({
+            ...prev,
+            [name]: type === 'number' ? Number(value) : value
+        }));
     };
+
+    const HOUSING_OPTIONS = ["QUINTA", "APTO", "CASA", "RANCHO"];
+    const TENENCIA_OPTIONS = ["PROPIA", "ALQUILADA", "CEDIDA", "PRESTADA"];
+
+    const [isCustomHousing, setIsCustomHousing] = useState(false);
+    const [isCustomTenencia, setIsCustomTenencia] = useState(false);
+
+    const handleHousingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === "OTRO") {
+            setIsCustomHousing(true);
+            setPatientData(prev => ({ ...prev, tipoVivienda: "" }));
+        } else {
+            setIsCustomHousing(false);
+            setPatientData(prev => ({ ...prev, tipoVivienda: value }));
+        }
+    };
+
+    const handleTenenciaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = e.target.value;
+        if (value === "OTRO") {
+            setIsCustomTenencia(true);
+            setPatientData(prev => ({ ...prev, tenenciaVivienda: "" }));
+        } else {
+            setIsCustomTenencia(false);
+            setPatientData(prev => ({ ...prev, tenenciaVivienda: value }));
+        }
+    };
+
 
     const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, checked } = e.target;
         setPatientData(prev => ({ ...prev, [name]: checked }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSubmit(patientData);
+        setLoading(true);
+        setError(null);
+
+        try {
+            // Clean data: convert empty strings to null for nullable fields
+            // This is still needed because form inputs might set empty strings
+            const submissionData = Object.fromEntries(
+                Object.entries(patientData).map(([key, value]) => {
+                    if (value === "") return [key, null];
+                    return [key, value];
+                })
+            );
+
+            let response;
+            if (isNewPatient) {
+                response = await axiosClientInstance.post("/paciente", submissionData);
+            } else {
+                response = await axiosClientInstance.patch(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`, submissionData);
+            }
+            console.log(response.data);
+            onCancel();
+        } catch (error) {
+            console.log(error);
+            setError(handleAxiosError(error));
+        } finally {
+            setLoading(false);
+            onSubmit(patientData);
+        }
     };
+
+    useEffect(() => {
+        if (initialData) {
+            axiosClientInstance.get(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`)
+                .then(response => {
+                    const backendData = response.data;
+                    // Map backend response (which includes relations like persona) to form state
+                    // We only extract fields that exist in CreatePacienteDto
+                    setPatientData(prev => ({
+                        ...prev,
+                        cedula: backendData.persona?.cedula || prev.cedula,
+                        tipo_cedula: backendData.persona?.tipo_cedula || prev.tipo_cedula,
+                        estadoCivil: backendData.estadoCivil || "",
+                        lugarNacimiento: backendData.lugarNacimiento || "",
+                        paisNacimiento: backendData.paisNacimiento || "",
+                        ocupacion: backendData.ocupacion || "",
+                        gradoInstruccion: backendData.gradoInstruccion || "",
+                        profesion: backendData.profesion || "",
+                        salarioMensual: backendData.salarioMensual || "",
+                        carnetPatria: backendData.carnetPatria || false,
+                        tipoDeSolicitud: backendData.tipoDeSolicitud || "",
+                        alergico: backendData.alergico || "",
+                        tipoVivienda: backendData.tipoVivienda || "",
+                        descripcionVivienda: backendData.descripcionVivienda || "",
+                        nHabitaciones: backendData.nHabitaciones || 0,
+                        nBanos: backendData.nBanos || 0,
+                        cocina: backendData.cocina || false,
+                        salaComedor: backendData.salaComedor || false,
+                        tenenciaVivienda: backendData.tenenciaVivienda || "",
+                        observaciones: backendData.observaciones || ""
+                    }));
+                    setIsNewPatient(false);
+                })
+                .catch(error => {
+                    setError(handleAxiosError(error));
+                });
+        }
+    }, [initialData]);
 
     return (
         <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-xl p-5 space-y-4 shadow-sm animate-fadeIn">
@@ -95,26 +203,23 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                     </select>
                 </div>
 
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700">Lugar de Nacimiento</label>
-                    <input
-                        type="text"
-                        name="lugarNacimiento"
-                        value={patientData.lugarNacimiento}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                    />
-                </div>
-
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700">País de Nacimiento</label>
-                    <input
-                        type="text"
-                        name="paisNacimiento"
-                        value={patientData.paisNacimiento}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                    />
+                <div className="md:col-span-2 space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Lugar y País de Nacimiento</label>
+                    <div className="relative">
+                        <AddressAutocomplete
+                            value={patientData.lugarNacimiento}
+                            onChange={(val) => setPatientData(prev => ({ ...prev, lugarNacimiento: val }))}
+                            onSelectFull={(address) => {
+                                const country = address.address?.country || "";
+                                setPatientData(prev => ({
+                                    ...prev,
+                                    lugarNacimiento: address.display_name,
+                                    paisNacimiento: country
+                                }));
+                            }}
+                            placeholder="Buscar ciudad de nacimiento..."
+                        />
+                    </div>
                 </div>
 
                 <div className="space-y-1">
@@ -187,36 +292,146 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                 />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700">Tipo de Vivienda</label>
-                    <input
-                        type="text"
-                        name="tipoVivienda"
-                        value={patientData.tipoVivienda}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                    />
+            <div className="space-y-4 pt-4 border-t border-gray-50">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-700">Tipo de Vivienda</label>
+                        <div className="space-y-2">
+                            <select
+                                value={isCustomHousing ? "OTRO" : (HOUSING_OPTIONS.includes(patientData.tipoVivienda) ? patientData.tipoVivienda : "")}
+                                onChange={handleHousingChange}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white"
+                            >
+                                <option value="">Seleccionar</option>
+                                {HOUSING_OPTIONS.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                                <option value="OTRO">OTRO</option>
+                            </select>
+
+                            {isCustomHousing && (
+                                <input
+                                    type="text"
+                                    name="tipoVivienda"
+                                    value={patientData.tipoVivienda}
+                                    onChange={handleChange}
+                                    placeholder="Especifique otro tipo de vivienda"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none animate-fadeIn"
+                                    autoFocus
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium text-gray-700">Tenencia</label>
+                        <div className="space-y-2">
+                            <select
+                                value={isCustomTenencia ? "OTRO" : (TENENCIA_OPTIONS.includes(patientData.tenenciaVivienda) ? patientData.tenenciaVivienda : "")}
+                                onChange={handleTenenciaChange}
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-white"
+                            >
+                                <option value="">Seleccionar</option>
+                                {TENENCIA_OPTIONS.map(option => (
+                                    <option key={option} value={option}>{option}</option>
+                                ))}
+                                <option value="OTRO">OTRO</option>
+                            </select>
+
+                            {isCustomTenencia && (
+                                <input
+                                    type="text"
+                                    name="tenenciaVivienda"
+                                    value={patientData.tenenciaVivienda}
+                                    onChange={handleChange}
+                                    placeholder="Especifique tenencia"
+                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none animate-fadeIn"
+                                    autoFocus
+                                />
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <div className="space-y-1">
+
+                <div className="space-y-3">
                     <label className="text-xs font-medium text-gray-700">Descripción Vivienda</label>
-                    <input
-                        type="text"
-                        name="descripcionVivienda"
-                        value={patientData.descripcionVivienda}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                    />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-500">N° de Hab.</label>
+                            <input
+                                type="number"
+                                min="0"
+                                name="nHabitaciones"
+                                value={patientData.nHabitaciones}
+                                onChange={handleChange}
+                                className="w-full px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-900 outline-none focus:border-purple-500 bg-white"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-gray-500">N° de Baños</label>
+                            <input
+                                type="number"
+                                min="0"
+                                name="nBanos"
+                                value={patientData.nBanos}
+                                onChange={handleChange}
+                                className="w-full px-3 py-1.5 border border-gray-200 rounded-md text-sm text-gray-900 outline-none focus:border-purple-500 bg-white"
+                            />
+                        </div>
+
+                        <div className="md:col-span-2 flex flex-wrap gap-4 items-center pl-2">
+                            <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-white rounded-md transition-colors">
+                                <input
+                                    type="checkbox"
+                                    name="cocina"
+                                    checked={patientData.cocina}
+                                    onChange={handleCheckboxChange}
+                                    className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                />
+                                <span className="text-sm text-gray-700">Cocina</span>
+                            </label>
+
+                            <label className="flex items-center gap-2 cursor-pointer p-2 hover:bg-white rounded-md transition-colors">
+                                <input
+                                    type="checkbox"
+                                    name="salaComedor"
+                                    checked={patientData.salaComedor}
+                                    onChange={handleCheckboxChange}
+                                    className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                                />
+                                <span className="text-sm text-gray-700">Sala/Comed</span>
+                            </label>
+                        </div>
+
+                        <div className="col-span-2 md:col-span-4 mt-2">
+                            <input
+                                type="text"
+                                name="descripcionVivienda"
+                                placeholder="Otro: (Especifique detalles adicionales)"
+                                value={patientData.descripcionVivienda}
+                                onChange={handleChange}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm text-gray-900 outline-none focus:border-purple-500 bg-white"
+                            />
+                        </div>
+                    </div>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700">Tenencia</label>
-                    <input
-                        type="text"
-                        name="tenenciaVivienda"
-                        value={patientData.tenenciaVivienda}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
-                    />
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-gray-50">
+                <div className="flex justify-between items-center">
+                    <h3 className="text-sm font-medium text-gray-700">Núcleo Familiar</h3>
+                    <button
+                        type="button"
+                        onClick={() => console.log("Agregar familiar clicked")}
+                        className="text-xs bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
+                    >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        Agregar Familiar
+                    </button>
+                </div>
+                <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 gap-2 bg-gray-50/50">
+                    <UserPlus className="w-8 h-8 opacity-20" />
+                    <span className="text-sm">No hay familiares registrados</span>
                 </div>
             </div>
 
@@ -230,7 +445,11 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
             </div>
-
+            {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    {error}
+                </div>
+            )}
             <div className="pt-4 flex justify-end gap-3">
                 <button
                     type="button"
@@ -241,6 +460,7 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                 </button>
                 <button
                     type="submit"
+                    disabled={loading}
                     className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center gap-2"
                 >
                     <Save className="w-4 h-4" />

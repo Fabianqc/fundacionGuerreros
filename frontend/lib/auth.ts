@@ -90,9 +90,9 @@ export const authOptions: AuthOptions = {
                 token.email = user.email;
                 token.sub = user.id; // Save User ID for refresh endpoint
 
-                // Optional: If the backend returns expiration, we would use it here.
-                // For now, we assume a standard duration or decode it if necessary.
-                token.backendAccessTokenExpires = Date.now() + 86400 * 1000;
+                // Use expiration from backend if available, otherwise default to 1 hour (3600s)
+                const expiresIn = user.expires_in || 3600;
+                token.backendAccessTokenExpires = Date.now() + expiresIn * 1000;
             }
 
             // Return previous token if the access token has not expired yet

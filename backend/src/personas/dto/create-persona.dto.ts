@@ -1,4 +1,5 @@
 import { IsDate, IsNotEmpty, IsString, MinLength, MaxLength, minLength } from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreatePersonaDto {
 
@@ -24,6 +25,7 @@ export class CreatePersonaDto {
 
     @IsDate({ message: 'La fecha de nacimiento debe ser una fecha' })
     @IsNotEmpty({ message: 'La fecha de nacimiento es requerida' })
+    @Type(() => Date)
     nacimiento: Date;
 
     @IsString({ message: 'El sexo debe ser una cadena de texto' })
