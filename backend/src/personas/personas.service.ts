@@ -14,6 +14,10 @@ export class PersonasService {
         private readonly personasRepository: Repository<Persona>
     ){}
 
+    spaceToUppercase(text: string) {
+        return text.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+
     async create(createPersonaDto: CreatePersonaDto) {
         let persona = await this.personasRepository.findOneBy({
             cedula: createPersonaDto.cedula,
@@ -27,6 +31,8 @@ export class PersonasService {
         if (!createPersonaDto.sexo || !createPersonaDto.tipo_cedula) {
             throw new BadRequestException('El sexo y el tipo de cedula son obligatorios');
         }
+
+        createPersonaDto.fullname = this.spaceToUppercase(createPersonaDto.fullname);
 
         return await this.personasRepository.save(createPersonaDto);
     }

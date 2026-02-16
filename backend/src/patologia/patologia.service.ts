@@ -1,26 +1,41 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { CreatePatologiaDto } from './dto/create-patologia.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Patologia } from './entities/patologia.entity';
+import { Repository } from 'typeorm';
 import { UpdatePatologiaDto } from './dto/update-patologia.dto';
-
 @Injectable()
 export class PatologiaService {
-  create(createPatologiaDto: CreatePatologiaDto) {
-    return 'This action adds a new patologia';
+  constructor(
+    @InjectRepository(Patologia)
+    private readonly patologiaRepository: Repository<Patologia>
+  ) { }
+
+  async create(createPatologiaDto: CreatePatologiaDto) {
+    let patologia = await this.patologiaRepository.findOneBy({
+      name: createPatologiaDto.name
+    });
+    if (patologia) {
+      throw new BadRequestException('La patologia ya existe');
+    }
+    return await this.patologiaRepository.save(createPatologiaDto);
   }
 
-  findAll() {
-    return `This action returns all patologia`;
+  async findAll() {
+    //THE NUMBER OF PATIENTS NEEDS TO BE DEVELOPED
+    let patologias = await this.patologiaRepository.find();
+    return {patologias, count: patologias.length};
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} patologia`;
+  async update(name: string, updatePatologiaDto: UpdatePatologiaDto) {
+    let patologia = await this.patologiaRepository.findOneBy({ name });
+    if (!patologia) {
+      throw new BadRequestException('La patologia no existe');
+    }
+    return await this.patologiaRepository.update(name, updatePatologiaDto);
   }
 
-  update(id: number, updatePatologiaDto: UpdatePatologiaDto) {
-    return `This action updates a #${id} patologia`;
-  }
+  async remove(id: string) {
 
-  remove(id: number) {
-    return `This action removes a #${id} patologia`;
   }
 }

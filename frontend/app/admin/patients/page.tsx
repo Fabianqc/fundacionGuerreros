@@ -8,7 +8,8 @@ import {
     Phone,
     Mail,
     Download,
-    MoreVertical
+    MoreVertical,
+    Edit
 } from "lucide-react";
 import CreatePatientModal from "./components/CreatePatientModal";
 import { useState } from "react";
@@ -72,6 +73,8 @@ export default function PatientsPage() {
 
     // State for Modal
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
     // Debounce search
     useEffect(() => {
@@ -110,8 +113,12 @@ export default function PatientsPage() {
             {/* Modal */}
             <CreatePatientModal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    setSelectedPatient(null);
+                }}
                 onSuccess={handlePageChange}
+                patientToEdit={selectedPatient}
             />
 
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
@@ -219,10 +226,29 @@ export default function PatientsPage() {
                                             {patient.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button className="text-gray-400 hover:text-purple-600 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
+                                        <button
+                                            onClick={() => setOpenMenuId(openMenuId === patient.cedula ? null : patient.cedula)}
+                                            className="text-gray-400 hover:text-purple-600 transition-colors"
+                                        >
                                             <MoreVertical className="w-5 h-5" />
                                         </button>
+
+                                        {openMenuId === patient.cedula && (
+                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-10 py-1 animate-fadeIn">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedPatient(patient);
+                                                        setIsCreateModalOpen(true);
+                                                        setOpenMenuId(null);
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-purple-600 transition-colors flex items-center gap-2"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                    Actualizar Datos
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </motion.tr>
                             ))}

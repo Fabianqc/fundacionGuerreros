@@ -17,18 +17,9 @@ export class PatologiaController {
     return this.patologiaService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.patologiaService.findOne(+id);
+  @Patch(':name')
+  update(@Param('name') name: string, @Body() updatePatologiaDto: UpdatePatologiaDto) {
+    return this.patologiaService.update(name, updatePatologiaDto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePatologiaDto: UpdatePatologiaDto) {
-    return this.patologiaService.update(+id, updatePatologiaDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.patologiaService.remove(+id);
-  }
 }

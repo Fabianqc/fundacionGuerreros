@@ -13,17 +13,47 @@ interface CreatePatientModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSuccess?: () => void;
+    patientToEdit?: any; // Using any for now to avoid circular dependency issues or strict type matching, refine later
 }
 
 type SearchStatus = "idle" | "searching" | "found" | "not-found";
 
-export default function CreatePatientModal({ isOpen, onClose, onSuccess }: CreatePatientModalProps) {
+export default function CreatePatientModal({ isOpen, onClose, onSuccess, patientToEdit }: CreatePatientModalProps) {
     const [cedula, setCedula] = useState("");
     const [tipoCedula, setTipoCedula] = useState("V");
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<CreatePersonaInterface>({} as CreatePersonaInterface);
     const [error, setError] = useState<string | null>(null);
     const { addNotification } = useNotification();
+
+    // Reset state when modal opens/closes or patientToEdit changes
+    const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+    if (isOpen !== prevIsOpen) {
+        setPrevIsOpen(isOpen);
+        if (isOpen && patientToEdit) {
+            // Edit Mode Initialization
+            setSearchStatus("found");
+            setCedula(patientToEdit.cedula);
+            setTipoCedula(patientToEdit.tipo_cedula);
+            setPersonData({
+                cedula: patientToEdit.cedula,
+                tipo_cedula: patientToEdit.tipo_cedula,
+                fullname: patientToEdit.Fullname,
+                email: patientToEdit.email,
+                telefono: patientToEdit.telefono,
+                nacimiento: new Date(), // Placeholder or fetch real date if available in patientToEdit
+                sexo: "",
+                direccion: ""
+            });
+        } else if (isOpen && !patientToEdit) {
+            // Create Mode Initialization
+            setSearchStatus("idle");
+            setCedula("");
+            setTipoCedula("V");
+            setPersonData({} as CreatePersonaInterface);
+            setError(null);
+        }
+    }
 
     const handleSearch = async () => {
         if (!cedula || !tipoCedula) return;
@@ -92,8 +122,16 @@ export default function CreatePatientModal({ isOpen, onClose, onSuccess }: Creat
                             {/* Header */}
                             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-800">Registrar Paciente</h2>
-                                    <p className="text-sm text-gray-500">Busque una persona existente o regístrela.</p>
+                                    <h2 className="text-xl font-bold text-gray-800">
+                                        {patientToEdit ? "Actualizar Paciente" : "Registrar Paciente"}
+                                    </h2>
+                                    {patientToEdit ? (
+                                        <p className="text-sm font-medium text-purple-600 flex items-center gap-1">
+                                            {patientToEdit.Fullname}
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-gray-500">Busque una persona existente o regístrela.</p>
+                                    )}
                                 </div>
                                 <button
                                     onClick={onClose}
@@ -105,80 +143,82 @@ export default function CreatePatientModal({ isOpen, onClose, onSuccess }: Creat
 
                             {/* Content */}
                             <div className="p-6 overflow-y-auto custom-scrollbar">
-                                {/* Search Section */}
-                                <div className="mb-6">
-                                    <label className="text-sm font-semibold text-gray-700 mb-2 block">
-                                        Buscar por Cédula
-                                    </label>
-                                    <div className="flex gap-2">
-                                        <select
-                                            value={tipoCedula}
-                                            onChange={(e) => setTipoCedula(e.target.value)}
-                                            className="px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-gray-50/50"
-                                            disabled={searchStatus === "found"}
-                                        >
-                                            <option value="V">V</option>
-                                            <option value="E">E</option>
-                                            <option value="J">J</option>
-                                            <option value="P">P</option>
-                                            <option value="G">G</option>
-                                        </select>
-                                        <div className="relative flex-1">
-                                            <input
-                                                type="text"
-                                                value={cedula}
-                                                onChange={(e) => setCedula(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                                placeholder="Ej: 12.345.678"
-                                                className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
-                                                disabled={searchStatus === "found"} // Disable if found to lock logic, can add clear button later
-                                            />
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                {searchStatus === "searching" && (
-                                                    <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
-                                                )}
-                                                {searchStatus === "found" && (
-                                                    <CheckCircle className="w-5 h-5 text-green-500" />
-                                                )}
-                                                {searchStatus === "not-found" && (
-                                                    <AlertCircle className="w-5 h-5 text-orange-500" />
-                                                )}
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={handleSearch}
-                                            disabled={!cedula || searchStatus === "searching" || searchStatus === "found"}
-                                            className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
-                                        >
-                                            <Search className="w-4 h-4" />
-                                            Buscar
-                                        </button>
-
-                                        {(searchStatus !== "idle" || cedula) && (
-                                            <button
-                                                onClick={handleReset}
-                                                className="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 font-medium transition-colors flex items-center gap-2"
-                                                title="Limpiar búsqueda"
+                                {/* Search Section - Hide if editing */}
+                                {!patientToEdit && (
+                                    <div className="mb-6">
+                                        <label className="text-sm font-semibold text-gray-700 mb-2 block">
+                                            Buscar por Cédula
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={tipoCedula}
+                                                onChange={(e) => setTipoCedula(e.target.value)}
+                                                className="px-3 py-2.5 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none bg-gray-50/50"
+                                                disabled={searchStatus === "found"}
                                             >
-                                                <X className="w-4 h-4" />
+                                                <option value="V">V</option>
+                                                <option value="E">E</option>
+                                                <option value="J">J</option>
+                                                <option value="P">P</option>
+                                                <option value="G">G</option>
+                                            </select>
+                                            <div className="relative flex-1">
+                                                <input
+                                                    type="text"
+                                                    value={cedula}
+                                                    onChange={(e) => setCedula(e.target.value)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                                    placeholder="Ej: 12.345.678"
+                                                    className="w-full pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500"
+                                                    disabled={searchStatus === "found"} // Disable if found to lock logic, can add clear button later
+                                                />
+                                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                                    {searchStatus === "searching" && (
+                                                        <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
+                                                    )}
+                                                    {searchStatus === "found" && (
+                                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                                    )}
+                                                    {searchStatus === "not-found" && (
+                                                        <AlertCircle className="w-5 h-5 text-orange-500" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={handleSearch}
+                                                disabled={!cedula || searchStatus === "searching" || searchStatus === "found"}
+                                                className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
+                                            >
+                                                <Search className="w-4 h-4" />
+                                                Buscar
                                             </button>
-                                        )}
-                                    </div>
 
-                                    {/* Status Feedback */}
-                                    <div className="mt-2 text-sm min-h-[20px]">
-                                        {searchStatus === "not-found" && (
-                                            <span className="text-orange-600 flex items-center gap-1 animate-fadeIn">
-                                                Persona no encontrada. Por favor complete el registro abajo.
-                                            </span>
-                                        )}
-                                        {searchStatus === "found" && (
-                                            <span className="text-green-600 flex items-center gap-1 animate-fadeIn">
-                                                Persona encontrada: <strong>{personData?.fullname}</strong>
-                                            </span>
-                                        )}
+                                            {(searchStatus !== "idle" || cedula) && (
+                                                <button
+                                                    onClick={handleReset}
+                                                    className="px-5 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 font-medium transition-colors flex items-center gap-2"
+                                                    title="Limpiar búsqueda"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Status Feedback */}
+                                        <div className="mt-2 text-sm min-h-[20px]">
+                                            {searchStatus === "not-found" && (
+                                                <span className="text-orange-600 flex items-center gap-1 animate-fadeIn">
+                                                    Persona no encontrada. Por favor complete el registro abajo.
+                                                </span>
+                                            )}
+                                            {searchStatus === "found" && (
+                                                <span className="text-green-600 flex items-center gap-1 animate-fadeIn">
+                                                    Persona encontrada: <strong>{personData?.fullname}</strong>
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Dynamic Content Area */}
                                 <div className="space-y-6">

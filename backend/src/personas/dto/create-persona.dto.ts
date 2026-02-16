@@ -38,6 +38,5 @@ export class CreatePersonaDto {
 
     @IsString({ message: 'El email debe ser una cadena de texto' })
     @IsOptional()
-    @IsEmail({}, { message: 'El email debe ser valido' })
     email: string;
 }

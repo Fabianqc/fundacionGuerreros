@@ -15,13 +15,11 @@ export class PersonasController {
 
   @Post()
   create(@ActiveUser() user: ActiveUserInterface, @Body() createPersonaDto: CreatePersonaDto) {
-    console.log(user);
     return this.personasService.create(createPersonaDto);
   }
 
   @Get(':tipo_cedula/:cedula')
   findByCedula(@Param() findPersonByCedulaDto: FindPersonByCedulaDto) {
-    console.log(findPersonByCedulaDto);
     return this.personasService.findByCedula(findPersonByCedulaDto);
   }
 }

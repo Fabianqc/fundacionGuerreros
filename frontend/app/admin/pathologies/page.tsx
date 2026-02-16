@@ -13,84 +13,54 @@ import {
     Check,
     Loader2
 } from "lucide-react";
+import { useEffect } from "react";
+import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+
+
+import { useNotification } from "@/app/context/NotificationContext";
+import PathologyModal from "./components/PathologyModal";
 
 interface Pathology {
-    id: number | string;
     name: string;
-    description: string;
-    category: string;
-    patientsCount: number;
-    riskLevel: string;
+    descripcion: string;
+    //patientsCount: string;
+    riesgo: string;
 }
 
 export default function PathologiesPage() {
-    // Mock Data
-    const [pathologies, setPathologies] = useState<Pathology[]>([
-        {
-            id: 1,
-            name: "Hipertensión Arterial",
-            description: "Presión arterial alta crónica que requiere monitoreo constante.",
-            category: "Cardiovascular",
-            patientsCount: 45,
-            riskLevel: "Alto"
-        },
-        {
-            id: 2,
-            name: "Diabetes Tipo 2",
-            description: "Afección crónica que afecta la forma en que el cuerpo procesa el azúcar.",
-            category: "Endocrinología",
-            patientsCount: 38,
-            riskLevel: "Medio"
-        },
-        {
-            id: 3,
-            name: "Asma Bronquial",
-            description: "Afección en la que las vías respiratorias se estrechan y producen más mucosidad.",
-            category: "Respiratoria",
-            patientsCount: 22,
-            riskLevel: "Bajo"
-        },
-        {
-            id: 4,
-            name: "Artritis Reumatoide",
-            description: "Trastorno inflamatorio crónico que afecta las articulaciones.",
-            category: "Reumatología",
-            patientsCount: 15,
-            riskLevel: "Medio"
-        },
-        {
-            id: 5,
-            name: "Gastritis Crónica",
-            description: "Inflamación del revestimiento del estómago durante un largo periodo.",
-            category: "Gastroenterología",
-            patientsCount: 12,
-            riskLevel: "Bajo"
-        }
-    ]);
-
     const [searchTerm, setSearchTerm] = useState("");
-    const [isCreating, setIsCreating] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const [pathologies, setPathologies] = useState<Pathology[]>([]);
+
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPathology, setSelectedPathology] = useState<Pathology | null>(null);
+
+    const { addNotification } = useNotification();
 
     const filteredPathologies = pathologies.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleCreate = () => {
-        setIsCreating(true);
-        // Simulate API call
-        setTimeout(() => {
-            const newPathology: Pathology = {
-                id: Date.now(),
+    const handleCreate = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const response = await axiosClientInstance.post("/patologia", {
                 name: searchTerm,
-                description: "Nueva patología registrada",
-                category: "General",
-                patientsCount: 0,
-                riskLevel: "Bajo"
-            };
-            setPathologies(prev => [newPathology, ...prev]);
+                descripcion: "Nueva patología registrada",
+                riesgo: "Bajo"
+            });
+            setPathologies(prev => [response.data, ...prev]);
             setSearchTerm("");
-            setIsCreating(false);
-        }, 800);
+        } catch (error) {
+            setError(handleAxiosError(error));
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const getRiskColor = (level: string) => {
@@ -100,6 +70,25 @@ export default function PathologiesPage() {
             case "Bajo": return "text-green-600 bg-green-50 border-green-100";
             default: return "text-gray-600 bg-gray-50 border-gray-100";
         }
+    };
+    const fetchPathologies = async () => {
+        try {
+            const response = await axiosClientInstance.get("/patologia");
+            setPathologies(response.data.patologias);
+        } catch (error) {
+            setError(handleAxiosError(error));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        setIsLoading(true);
+        fetchPathologies();
+    }, []); // Empty dependency array to run once on mount
+
+    const handleModalSubmit = async (pathologyData: Pathology) => {
+        fetchPathologies();
     };
 
     return (
@@ -121,20 +110,21 @@ export default function PathologiesPage() {
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Buscar patología para gestionar o crear..."
-                            className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
+                            className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl text-gray-900 text-lg shadow-sm focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                         />
-                        {/* Inline Create Action */}
+
+                        {/* Inline Create Action - kept for quick create, but maybe redundant if we have modal. Keeping for now as per requirement. */}
                         <AnimatePresence>
                             {searchTerm && filteredPathologies.length === 0 && (
                                 <motion.button
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 20 }}
-                                    onClick={handleCreate}
-                                    disabled={isCreating}
+                                    onClick={() => handleCreate()} // Use handleCreate from closure or define it here if needed
+                                    disabled={isLoading}
                                     className="absolute right-2 top-2 bottom-2 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-md transition-all flex items-center gap-2"
                                 >
-                                    {isCreating ? (
+                                    {isLoading ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                             Creando...
@@ -142,16 +132,32 @@ export default function PathologiesPage() {
                                     ) : (
                                         <>
                                             <Plus className="w-4 h-4" />
-                                            Crear "{searchTerm}"
+                                            Crear "{searchTerm.slice(0, 20)}..."
                                         </>
                                     )}
                                 </motion.button>
                             )}
                         </AnimatePresence>
                     </div>
-                    <p className="text-center text-xs text-gray-400 mt-3">
-                        Si la patología no existe, escríbela y presiona "Crear".
-                    </p>
+                    <div className="flex justify-between items-center mt-3">
+                        <p className="text-xs text-gray-400">
+                            Si la patología no existe, escríbela y presiona "Crear".
+                        </p>
+                        <button
+                            onClick={() => {
+                                setSelectedPathology(null);
+                                setIsModalOpen(true);
+                            }}
+                            className="text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                        >
+                            <Plus className="w-3 h-3" />
+                            Nueva Patología Manual
+                        </button>
+                    </div>
+
+                    {error && (
+                        <div className="mt-2 text-red-500 text-sm">{error}</div>
+                    )}
                 </div>
 
                 {/* List Content */}
@@ -161,7 +167,6 @@ export default function PathologiesPage() {
                             <thead className="bg-gray-50 border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Nombre</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoría</th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Pacientes</th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Nivel de Riesgo</th>
                                     <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
@@ -169,9 +174,9 @@ export default function PathologiesPage() {
                             </thead>
                             <tbody className="divide-y divide-gray-50">
                                 <AnimatePresence>
-                                    {filteredPathologies.map((pathology) => (
+                                    {filteredPathologies.map((pathology, index) => (
                                         <motion.tr
-                                            key={pathology.id}
+                                            key={index}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             exit={{ opacity: 0 }}
@@ -181,28 +186,29 @@ export default function PathologiesPage() {
                                             <td className="px-6 py-4">
                                                 <div>
                                                     <p className="font-semibold text-gray-900">{pathology.name}</p>
-                                                    <p className="text-sm text-gray-500 line-clamp-1">{pathology.description}</p>
+                                                    <p className="text-sm text-gray-500 line-clamp-1">{pathology.descripcion}</p>
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
-                                                    {pathology.category}
-                                                </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium text-sm">
                                                     <Users className="w-3.5 h-3.5" />
-                                                    {pathology.patientsCount}
+                                                    {0} {/*patientsCount IN THE FUTURE*/}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
-                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getRiskColor(pathology.riskLevel)}`}>
-                                                    {pathology.riskLevel}
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getRiskColor(pathology.riesgo)}`}>
+                                                    {pathology.riesgo}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedPathology(pathology);
+                                                            setIsModalOpen(true);
+                                                        }}
+                                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    >
                                                         <Edit className="w-4 h-4" />
                                                     </button>
                                                     <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
@@ -222,7 +228,7 @@ export default function PathologiesPage() {
                             </div>
                             <h3 className="text-lg font-medium text-gray-900">No se encontraron patologías</h3>
                             <p className="text-gray-500 max-w-sm mt-1">
-                                No hay resultados para "{searchTerm}". Usa el botón superior para crearla.
+                                No hay resultados para "{searchTerm.slice(0, 20)}...". Usa el botón superior para crearla.
                             </p>
                         </div>
                     )}
@@ -234,6 +240,14 @@ export default function PathologiesPage() {
                     <span>Mostrando resultados filtrados</span>
                 </div>
             </div>
+
+            <PathologyModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleModalSubmit}
+                initialData={selectedPathology}
+                existingNames={pathologies.map(p => p.name)}
+            />
         </div>
     );
 }
