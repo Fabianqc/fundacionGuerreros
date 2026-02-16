@@ -7,6 +7,7 @@ import { CreatePacienteInterface } from "@/types/create-paciente.dto";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { useNotification } from "@/app/context/NotificationContext";
 
 
 
@@ -14,10 +15,9 @@ interface PatientFormProps {
     onSubmit: (data: CreatePacienteInterface) => void;
     onCancel: () => void;
     initialData: CreatePersonaInterface;
-    submitLabel?: string;
 }
 
-export default function PatientForm({ onSubmit, onCancel, initialData, submitLabel = "Crear Paciente" }: PatientFormProps) {
+export default function PatientForm({ onSubmit, onCancel, initialData }: PatientFormProps) {
     const [loading, setLoading] = useState(false);
     const [isNewPatient, setIsNewPatient] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -87,6 +87,8 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
         setPatientData(prev => ({ ...prev, [name]: checked }));
     };
 
+    const { addNotification } = useNotification();
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -109,10 +111,13 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                 response = await axiosClientInstance.patch(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`, submissionData);
             }
             console.log(response.data);
+            addNotification("success", isNewPatient ? "Paciente registrado exitosamente" : "Información actualizada correctamente");
             onCancel();
         } catch (error) {
             console.log(error);
-            setError(handleAxiosError(error));
+            const errorMessage = handleAxiosError(error);
+            setError(errorMessage);
+            addNotification("error", errorMessage);
         } finally {
             setLoading(false);
             onSubmit(patientData);
@@ -124,8 +129,10 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
             axiosClientInstance.get(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`)
                 .then(response => {
                     const backendData = response.data;
-                    // Map backend response (which includes relations like persona) to form state
-                    // We only extract fields that exist in CreatePacienteDto
+                    if (backendData) {
+                        setIsNewPatient(false);
+                        console.log(backendData);
+                    }
                     setPatientData(prev => ({
                         ...prev,
                         cedula: backendData.persona?.cedula || prev.cedula,
@@ -149,14 +156,12 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                         tenenciaVivienda: backendData.tenenciaVivienda || "",
                         observaciones: backendData.observaciones || ""
                     }));
-                    setIsNewPatient(false);
                 })
                 .catch(error => {
                     setError(handleAxiosError(error));
                 });
         }
     }, [initialData]);
-
     return (
         <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-xl p-5 space-y-4 shadow-sm animate-fadeIn">
             <div className="pb-3 border-b border-gray-50 mb-2">
@@ -464,7 +469,7 @@ export default function PatientForm({ onSubmit, onCancel, initialData, submitLab
                     className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center gap-2"
                 >
                     <Save className="w-4 h-4" />
-                    {submitLabel}
+                    {isNewPatient ? "Crear Paciente" : "Actualizar Paciente"}
                 </button>
             </div>
         </form>

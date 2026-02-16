@@ -6,4 +6,5 @@ export interface CreatePersonaInterface {
     nacimiento: Date;
     sexo: string;
     direccion: string;
+    email?: string;
 }

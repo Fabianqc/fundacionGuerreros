@@ -1,4 +1,4 @@
-import { IsDate, IsNotEmpty, IsString, MinLength, MaxLength, minLength } from "class-validator";
+import { IsDate, IsNotEmpty, IsString, MinLength, MaxLength, minLength, IsOptional, IsEmail } from "class-validator";
 import { Type } from "class-transformer";
 
 export class CreatePersonaDto {
@@ -35,4 +35,9 @@ export class CreatePersonaDto {
     @IsString({ message: 'La direccion debe ser una cadena de texto' })
     @IsNotEmpty({ message: 'La direccion es requerida' })
     direccion: string;
+
+    @IsString({ message: 'El email debe ser una cadena de texto' })
+    @IsOptional()
+    @IsEmail({}, { message: 'El email debe ser valido' })
+    email: string;
 }

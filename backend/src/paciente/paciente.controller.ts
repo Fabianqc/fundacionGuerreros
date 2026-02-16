@@ -6,6 +6,7 @@ import { ActiveUser } from 'src/common/decorators/active-user.decorator';
 import type ActiveUserInterface from 'src/common/interfaces/active-user.interface';
 import { AuthGuard } from '@nestjs/passport';
 import { UseGuards } from '@nestjs/common';
+import { Query } from '@nestjs/common';
 
 @Controller('paciente')
 @UseGuards(AuthGuard('jwt'))
@@ -26,5 +27,10 @@ export class PacienteController {
   @Patch(':cedula/:tipo_cedula')
   update(@Param('cedula') cedula: string, @Param('tipo_cedula') tipo_cedula: string, @Body() updatePacienteDto: UpdatePacienteDto, @ActiveUser() activeUser: ActiveUserInterface) {
     return this.pacienteService.update(cedula, tipo_cedula, updatePacienteDto, activeUser);
+  }
+
+  @Get()
+  findAllWithLimit(@Query('skip') skip: number, @Query('take') take: number, @Query('search') search: string) {
+    return this.pacienteService.findAllWithLimit(skip, take, search);
   }
 }

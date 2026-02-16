@@ -7,20 +7,23 @@ import PatientForm from "./PatientForm";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { handleAxiosError } from "@/lib/handleAxiosError";
+import { useNotification } from "@/app/context/NotificationContext";
 
 interface CreatePatientModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
 type SearchStatus = "idle" | "searching" | "found" | "not-found";
 
-export default function CreatePatientModal({ isOpen, onClose }: CreatePatientModalProps) {
+export default function CreatePatientModal({ isOpen, onClose, onSuccess }: CreatePatientModalProps) {
     const [cedula, setCedula] = useState("");
     const [tipoCedula, setTipoCedula] = useState("V");
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<CreatePersonaInterface>({} as CreatePersonaInterface);
     const [error, setError] = useState<string | null>(null);
+    const { addNotification } = useNotification();
 
     const handleSearch = async () => {
         if (!cedula || !tipoCedula) return;
@@ -37,7 +40,9 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
                 setSearchStatus("not-found");
             }
         } catch (error) {
-            setError(handleAxiosError(error));
+            const errorMessage = handleAxiosError(error);
+            setError(errorMessage);
+            addNotification("error", errorMessage);
             setPersonData({} as CreatePersonaInterface);
             setSearchStatus("not-found");
         }
@@ -62,6 +67,7 @@ export default function CreatePatientModal({ isOpen, onClose }: CreatePatientMod
     };
 
     const handleSubmitPatient = (data: any) => {
+        if (onSuccess) onSuccess();
         onClose();
     };
 

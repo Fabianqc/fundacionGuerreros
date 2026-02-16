@@ -26,7 +26,8 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
         telefono: "",
         nacimiento: new Date(),
         sexo: "", // Changed from genero to match schema implication or keep consistent
-        direccion: ""
+        direccion: "",
+        email: ""
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -51,7 +52,8 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                 telefono: formData.telefono,
                 nacimiento: new Date(formData.nacimiento),
                 sexo: formData.sexo,
-                direccion: formData.direccion
+                direccion: formData.direccion,
+                email: formData.email
             }
 
             const response = await axiosClientInstance.post("/personas", data);
@@ -147,6 +149,21 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                             value={formData.telefono}
                             onChange={handleChange}
                             placeholder="Ej: 0414-1234567"
+                            className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700">Email (Opcional)</label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="email"
+                            name="email"
+                            value={formData.email || ""}
+                            onChange={handleChange}
+                            placeholder="Ej: correo@ejemplo.com"
                             className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
                         />
                     </div>

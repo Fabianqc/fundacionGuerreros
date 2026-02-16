@@ -34,6 +34,9 @@ export class Persona {
     @Column({ name: 'Direccion', nullable: false })
     direccion: string;
 
+    @Column({ name: 'Email', nullable: true, type: 'varchar', length: 150 })
+    email: string;
+
     @OneToMany(() => Usuario, (usuario) => usuario.persona)
     usuarios: Usuario[];
 

@@ -3,10 +3,11 @@ import { CreatePacienteDto } from './dto/create-paciente.dto';
 import { UpdatePacienteDto } from './dto/update-paciente.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Paciente } from './entities/paciente.entity';
-import { Repository } from 'typeorm';
+import { Like, ILike, Repository } from 'typeorm';
 import ActiveUserInterface from 'src/common/interfaces/active-user.interface';
 import { Persona } from 'src/personas/entities/persona.entity';
 import { Usuario } from 'src/usuario/entities/usuario.entity';
+import { sendPacientesInterface } from './dto/send-pacientes.interface';
 
 @Injectable()
 export class PacienteService {
@@ -67,4 +68,36 @@ export class PacienteService {
     return await this.pacienteRepository.update(paciente.id, dataToUpdate);
   }
 
+  async findAllWithLimit(skip: number, take: number, search: string) {
+
+    //The order of the last one viewed in the query needs to be implemented.
+    const where = search ? [
+      { persona: { fullname: ILike(`%${search}%`) } },
+      { persona: { cedula: ILike(`%${search}%`) } },
+      { persona: { email: ILike(`%${search}%`) } },
+      { persona: { telefono: ILike(`%${search}%`) } },
+    ] : {};
+
+    const data = await this.pacienteRepository.find({
+      take,
+      relations: ['persona'],
+      where,
+      skip
+    });
+    const count = await this.pacienteRepository.count({ where });
+    const pages = Math.ceil(count / take);
+    const pacientes: sendPacientesInterface[] = data.map((data) => {
+      return {
+        Fullname: data.persona.fullname,
+        cedula: data.persona.cedula,
+        tipo_cedula: data.persona.tipo_cedula,
+        email: data.persona.email,
+        telefono: data.persona.telefono,
+        ultimavisita: "",
+        status: "Activo",
+      };
+    });
+
+    return { pacientes, count, pages };
+  }
 }
