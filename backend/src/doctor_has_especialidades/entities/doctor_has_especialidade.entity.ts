@@ -2,14 +2,17 @@ import { Entity, ManyToOne, JoinColumn, PrimaryColumn } from "typeorm";
 import crypto from "crypto";
 import { Doctor } from "../../doctor/entities/doctor.entity";
 import { Especialidade } from "../../especialidades/entities/especialidade.entity";
+import { Exclude } from "class-transformer";
 
 @Entity('Doctor_has_Especialidades')
 export class DoctorHasEspecialidade {
 
     @PrimaryColumn('uuid', { name: 'Doctor_UUID' })
+    @Exclude()
     doctorId: string;
 
     @PrimaryColumn('uuid', { name: 'Especialidades_UUID' })
+    @Exclude()
     especialidadId: string;
 
     @ManyToOne(() => Doctor, (doctor) => doctor.doctor_especialidades)

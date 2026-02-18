@@ -1,1 +1,2 @@
-export class CreateConsultaHasPatologiaDto {}
+export class CreateConsultaHasPatologiaDto {
+}

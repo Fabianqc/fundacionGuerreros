@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Save, UserPlus } from "lucide-react";
 import AddressAutocomplete from "./AddressAutocomplete";
-import { CreatePacienteInterface } from "@/types/create-paciente.dto";
+import { CreatePacienteInterface } from "@/types/create-paciente.interface";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";

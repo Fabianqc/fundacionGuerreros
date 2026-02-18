@@ -5,6 +5,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import PersonForm from "../../patients/components/PersonForm"; // Reusing PersonForm
 import DoctorForm from "./DoctorForm";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { useNotification } from "@/app/context/NotificationContext";
+import { CreatePersonaInterface } from "@/types/create-persona.Interface";
+import { CreateDoctorInterface } from "@/types/create-doctor.interface";
 
 interface DoctorModalProps {
     isOpen: boolean;
@@ -20,13 +25,15 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
     const [tipoCedula, setTipoCedula] = useState("V");
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<any>(null);
-
+    const { addNotification } = useNotification();
+    const [error, setError] = useState<string | null>(null);
     // Initial Data Handler (For Editing)
     useEffect(() => {
         if (initialData && isOpen) {
             // Pre-fill data logic simulating a "Found" state
             setPersonData({
-                fullName: initialData.fullName,
+                fullName: initialData.fullName || initialData.fullname,
+                fullname: initialData.fullName || initialData.fullname, // Keep both for consistency if needed
                 cedula: initialData.cedula,
                 phone: initialData.phone,
                 email: initialData.email,
@@ -44,41 +51,55 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
     }, [initialData, isOpen]);
 
     const handleSearch = async () => {
-        if (!cedula) return;
+        if (!cedula || !tipoCedula) return;
         setSearchStatus("searching");
 
-        // MOCK API CALL
-        setTimeout(() => {
-            if (cedula === "12345678") {
-                setPersonData({
-                    fullName: "María González",
-                    cedula: `${tipoCedula}-${cedula}`,
-                    phone: "0412-1234567",
-                    email: "maria@example.com",
-                    id: 1
-                });
+        try {
+            const response = await axiosClientInstance.get(`/personas/${tipoCedula}/${cedula}`);
+            console.log(response.data);
+
+            if (response.data) {
+                setPersonData(response.data);
                 setSearchStatus("found");
             } else {
                 setSearchStatus("not-found");
-                setPersonData(null);
             }
-        }, 600);
+        } catch (error) {
+            const errorMessage = handleAxiosError(error);
+            setError(errorMessage);
+            addNotification("error", errorMessage);
+            setPersonData({} as CreatePersonaInterface);
+            setSearchStatus("not-found");
+        }
     };
 
     const handlePersonSubmit = (data: any) => {
-        console.log("Saving new person:", data);
-        setPersonData({ ...data, id: `new-${Date.now()}` });
         setSearchStatus("found");
     };
 
-    const handleSubmitDoctor = (doctorSpecificData: any) => {
-        // Combine Person Data + Doctor Data
-        const finalData = {
-            ...personData,
-            ...doctorSpecificData
-        };
-        onSubmit(finalData);
-        onClose();
+    const handleSubmitDoctor = (doctorSpecificData: CreateDoctorInterface) => {
+        axiosClientInstance.post("/doctores", doctorSpecificData)
+            .then((response) => {
+                addNotification("success", "Doctor guardado exitosamente");
+
+                // Construct full doctor object for UI update
+                const fullDoctorData = {
+                    ...doctorSpecificData,
+                    fullName: personData?.fullname || personData?.fullName || "Sin Nombre",
+                    cedula: `${doctorSpecificData.tipo_cedula || personData?.tipo_cedula}-${doctorSpecificData.ci_doctor || personData?.cedula}`,
+                    phone: personData?.phone || "",
+                    email: personData?.email || "",
+                    specialities: doctorSpecificData.especialidades || [],
+                    id: response.data.id || `temp-${Date.now()}` // Use ID from response or temp
+                };
+
+                onSubmit(fullDoctorData);
+                onClose();
+            })
+            .catch((error) => {
+                const errorMessage = handleAxiosError(error);
+                addNotification("error", errorMessage);
+            });
     };
 
     return (
@@ -176,7 +197,7 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                                     Persona Seleccionada:
                                                 </span>
                                                 <p className="text-green-700 text-sm mt-1 pl-6">
-                                                    {personData.fullName} <span className="text-green-600/70">({personData.cedula})</span>
+                                                    {personData.fullname} <span className="text-green-600/70">({personData.tipo_cedula}-{personData.cedula})</span>
                                                 </p>
                                             </div>
                                             {!initialData && (
@@ -218,9 +239,10 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                         animate={{ opacity: 1, y: 0 }}
                                     >
                                         <DoctorForm
+
                                             onSubmit={handleSubmitDoctor}
                                             onCancel={onClose}
-                                            initialData={initialData} // Pass initial doctor data if editing
+                                            initialData={personData} // Pass initial doctor data if editing
                                             submitLabel={initialData ? "Guardar Cambios" : "Registrar Doctor"}
                                         />
                                     </motion.div>

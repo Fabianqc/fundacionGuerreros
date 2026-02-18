@@ -127,6 +127,7 @@ export default function PathologyModal({ isOpen, onClose, onSubmit, initialData,
                                         value={formData.name}
                                         onChange={handleChange}
                                         maxLength={100}
+                                        disabled={isEditing}
                                         placeholder="Ej: Hipertensión Arterial"
                                         className="w-full px-4 py-2 border border-gray-200 rounded-xl text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                                         autoFocus

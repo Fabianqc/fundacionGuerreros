@@ -32,7 +32,7 @@ export class PatologiaService {
     if (!patologia) {
       throw new BadRequestException('La patologia no existe');
     }
-    return await this.patologiaRepository.update(name, updatePatologiaDto);
+    return await this.patologiaRepository.update({name}, updatePatologiaDto);
   }
 
   async remove(id: string) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Search,
@@ -14,6 +14,9 @@ import {
     Award
 } from "lucide-react";
 import DoctorModal from "./components/DoctorModal";
+import { useNotification } from "@/app/context/NotificationContext";
+import { handleAxiosError } from "@/lib/handleAxiosError";
+import axiosClientInstance from "@/lib/AxiosClientInstance";
 
 // Types
 interface Doctor {
@@ -22,7 +25,7 @@ interface Doctor {
     cedula: string;
     phone: string;
     email: string;
-    speciality: string;
+    specialities: string[];
     licenseNumber: string;
     status: 'Activo' | 'Inactivo';
 }
@@ -36,7 +39,7 @@ export default function DoctorsPage() {
             cedula: "V-12345678",
             phone: "0414-1234567",
             email: "roberto@casas.com",
-            speciality: "Medicina General",
+            specialities: ["Medicina General"],
             licenseNumber: "CMD-102030",
             status: "Activo"
         },
@@ -46,7 +49,7 @@ export default function DoctorsPage() {
             cedula: "V-87654321",
             phone: "0412-7654321",
             email: "ana@hospital.com",
-            speciality: "Cardiología",
+            specialities: ["Cardiología", "Medicina Interna"],
             licenseNumber: "CMD-998877",
             status: "Activo"
         },
@@ -56,7 +59,7 @@ export default function DoctorsPage() {
             cedula: "E-55443322",
             phone: "0416-5555555",
             email: "house@princeton.edu",
-            speciality: "Diagnóstico",
+            specialities: ["Diagnóstico", "Nefrología", "Infectología"],
             licenseNumber: "CMD-000666",
             status: "Inactivo"
         }
@@ -108,11 +111,23 @@ export default function DoctorsPage() {
     };
 
     const filteredDoctors = doctors.filter(doc =>
-        doc.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.speciality.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        doc.cedula.toLowerCase().includes(searchTerm.toLowerCase())
+        (doc.fullName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+        (doc.specialities?.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+        (doc.cedula?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     );
 
+    const Alldoctor = async () => {
+        try {
+            const response = await axiosClientInstance.get('/doctor');
+            console.log(response.data);
+        } catch (error) {
+            handleAxiosError(error);
+        }
+    }
+
+    useEffect(() => {
+        Alldoctor();
+    }, []);
     return (
         <div className="max-w-7xl mx-auto">
             {/* Header */}
@@ -173,10 +188,10 @@ export default function DoctorsPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold">
-                                                    {doc.fullName.charAt(4)} {/* First letter after "Dr. " approx */}
+                                                    {(doc.fullName || "Dr.").charAt(4) || "D"} {/* First letter after "Dr. " approx */}
                                                 </div>
                                                 <div>
-                                                    <p className="font-semibold text-gray-900">{doc.fullName}</p>
+                                                    <p className="font-semibold text-gray-900">{doc.fullName || "Sin Nombre"}</p>
                                                     <p className="text-xs text-gray-500">{doc.cedula}</p>
                                                 </div>
                                             </div>
@@ -184,7 +199,7 @@ export default function DoctorsPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 <Stethoscope className="w-4 h-4 text-gray-400" />
-                                                <span className="text-sm text-gray-700">{doc.speciality}</span>
+                                                <span className="text-sm text-gray-700">{doc.specialities?.join(", ")}</span>
                                             </div>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <Award className="w-3 h-3 text-gray-400" />
@@ -205,8 +220,8 @@ export default function DoctorsPage() {
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${doc.status === 'Activo'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-gray-100 text-gray-600'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-gray-100 text-gray-600'
                                                 }`}>
                                                 {doc.status}
                                             </span>

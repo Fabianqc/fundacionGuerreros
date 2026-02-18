@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { EspecialidadesService } from './especialidades.service';
 import { CreateEspecialidadeDto } from './dto/create-especialidade.dto';
 import { UpdateEspecialidadeDto } from './dto/update-especialidade.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @Controller('especialidades')
+@UseGuards(AuthGuard('jwt'))
 export class EspecialidadesController {
   constructor(private readonly especialidadesService: EspecialidadesService) {}
 
@@ -17,18 +19,13 @@ export class EspecialidadesController {
     return this.especialidadesService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.especialidadesService.findOne(+id);
+  @Patch(':name')
+  update(@Param('name') name: string, @Body() updateEspecialidadeDto: UpdateEspecialidadeDto) {
+    return this.especialidadesService.update(name, updateEspecialidadeDto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEspecialidadeDto: UpdateEspecialidadeDto) {
-    return this.especialidadesService.update(+id, updateEspecialidadeDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.especialidadesService.remove(+id);
+  @Delete(':name')
+  remove(@Param('name') name: string) {
+    return this.especialidadesService.remove(name);
   }
 }
