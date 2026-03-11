@@ -18,6 +18,10 @@ interface DoctorModalProps {
     initialData?: any;
 }
 
+interface DoctorData {
+
+}
+
 type SearchStatus = "idle" | "searching" | "found" | "not-found";
 
 export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: DoctorModalProps) {
@@ -26,6 +30,7 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<any>(null);
     const { addNotification } = useNotification();
+    const [ isEditing, setIsEditing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // Initial Data Handler (For Editing)
     useEffect(() => {
@@ -35,12 +40,13 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                 fullName: initialData.fullName || initialData.fullname,
                 fullname: initialData.fullName || initialData.fullname, // Keep both for consistency if needed
                 cedula: initialData.cedula,
+                tipo_cedula: initialData.tipo_cedula,
                 phone: initialData.phone,
                 email: initialData.email,
                 id: "existing-id"
             });
-            setCedula(initialData.cedula?.split('-')[1] || "");
-            setTipoCedula(initialData.cedula?.split('-')[0] || "V");
+            setCedula(initialData.cedula || "");
+            setTipoCedula(initialData.tipo_cedula || "V");
             setSearchStatus("found");
         } else if (!isOpen) {
             // Reset on close
@@ -56,11 +62,10 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
 
         try {
             const response = await axiosClientInstance.get(`/personas/${tipoCedula}/${cedula}`);
-            console.log(response.data);
-
             if (response.data) {
                 setPersonData(response.data);
                 setSearchStatus("found");
+                setIsEditing(true);
             } else {
                 setSearchStatus("not-found");
             }
@@ -78,28 +83,8 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
     };
 
     const handleSubmitDoctor = (doctorSpecificData: CreateDoctorInterface) => {
-        axiosClientInstance.post("/doctores", doctorSpecificData)
-            .then((response) => {
-                addNotification("success", "Doctor guardado exitosamente");
-
-                // Construct full doctor object for UI update
-                const fullDoctorData = {
-                    ...doctorSpecificData,
-                    fullName: personData?.fullname || personData?.fullName || "Sin Nombre",
-                    cedula: `${doctorSpecificData.tipo_cedula || personData?.tipo_cedula}-${doctorSpecificData.ci_doctor || personData?.cedula}`,
-                    phone: personData?.phone || "",
-                    email: personData?.email || "",
-                    specialities: doctorSpecificData.especialidades || [],
-                    id: response.data.id || `temp-${Date.now()}` // Use ID from response or temp
-                };
-
-                onSubmit(fullDoctorData);
-                onClose();
-            })
-            .catch((error) => {
-                const errorMessage = handleAxiosError(error);
-                addNotification("error", errorMessage);
-            });
+        onSubmit(doctorSpecificData);
+        onClose();
     };
 
     return (

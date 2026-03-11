@@ -6,7 +6,6 @@ import {
     Search,
     Plus,
     Stethoscope,
-    MoreVertical,
     Edit,
     Trash2,
     Phone,
@@ -14,9 +13,9 @@ import {
     Award
 } from "lucide-react";
 import DoctorModal from "./components/DoctorModal";
-import { useNotification } from "@/app/context/NotificationContext";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { useNotification } from "@/app/context/NotificationContext";
 
 // Types
 interface Doctor {
@@ -27,43 +26,13 @@ interface Doctor {
     email: string;
     specialities: string[];
     licenseNumber: string;
+    tipo_cedula: string;
     status: 'Activo' | 'Inactivo';
 }
 
 export default function DoctorsPage() {
     // --- State ---
-    const [doctors, setDoctors] = useState<Doctor[]>([
-        {
-            id: "doc-001",
-            fullName: "Dr. Roberto Casas",
-            cedula: "V-12345678",
-            phone: "0414-1234567",
-            email: "roberto@casas.com",
-            specialities: ["Medicina General"],
-            licenseNumber: "CMD-102030",
-            status: "Activo"
-        },
-        {
-            id: "doc-002",
-            fullName: "Dra. Ana Anatomía",
-            cedula: "V-87654321",
-            phone: "0412-7654321",
-            email: "ana@hospital.com",
-            specialities: ["Cardiología", "Medicina Interna"],
-            licenseNumber: "CMD-998877",
-            status: "Activo"
-        },
-        {
-            id: "doc-003",
-            fullName: "Dr. Gregory House",
-            cedula: "E-55443322",
-            phone: "0416-5555555",
-            email: "house@princeton.edu",
-            specialities: ["Diagnóstico", "Nefrología", "Infectología"],
-            licenseNumber: "CMD-000666",
-            status: "Inactivo"
-        }
-    ]);
+    const [doctors, setDoctors] = useState<Doctor[]>([]);
 
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -71,33 +40,27 @@ export default function DoctorsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalDoctors, setTotalDoctors] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const { addNotification } = useNotification();
+
     // --- Handlers ---
-    const handleCreateDoctor = (data: Omit<Doctor, "id">) => {
-        const newDoctor: Doctor = {
-            id: `doc-${Date.now()}`,
-            ...data
-        };
-        setDoctors([...doctors, newDoctor]);
+    const handleCreateDoctor = () => {
         setIsModalOpen(false);
+        Alldoctor();
     };
 
-    const handleUpdateDoctor = (data: Omit<Doctor, "id">) => {
-        if (!editingDoctor) return;
-
-        setDoctors(prev => prev.map(doc => {
-            if (doc.id === editingDoctor.id) {
-                return { ...doc, ...data };
-            }
-            return doc;
-        }));
+    const handleUpdateDoctor = () => {
         setEditingDoctor(null);
         setIsModalOpen(false);
+        Alldoctor();
     };
 
     const handleDeleteDoctor = (id: string) => {
-        if (confirm("¿Está seguro de eliminar este doctor?")) {
-            setDoctors(prev => prev.filter(doc => doc.id !== id));
-        }
+       addNotification("error", "esta funcion no esta disponible actualmente");
     };
 
     const openCreateModal = () => {
@@ -110,24 +73,50 @@ export default function DoctorsPage() {
         setIsModalOpen(true);
     };
 
-    const filteredDoctors = doctors.filter(doc =>
-        (doc.fullName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        (doc.specialities?.some(s => s.toLowerCase().includes(searchTerm.toLowerCase()))) ||
-        (doc.cedula?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    );
-
-    const Alldoctor = async () => {
+    const Alldoctor = async (page = currentPage, take = rowsPerPage, search = searchTerm) => {
+        setLoading(true);
         try {
-            const response = await axiosClientInstance.get('/doctor');
-            console.log(response.data);
+            const response = await axiosClientInstance.get('/doctor', {
+                params: {
+                    skip: (page - 1) * take,
+                    take: take,
+                    search: search
+                }
+            });
+            
+            const mappedDoctors = response.data.doctors.map((doc: any) => ({
+                id: doc.licenseNumber || doc.persona?.cedula || Math.random().toString(),
+                fullName: doc.persona?.fullname || 'Sin Nombre',
+                cedula: doc.persona?.cedula ? `${doc.persona.cedula}` : "",
+                tipo_cedula: doc.persona?.tipo_cedula || "",
+                phone: doc.persona?.telefono || "No aplica",
+                email: doc.persona?.email || "No aplica",
+                specialities: doc.doctor_especialidades?.map((spec: any) => spec.especialidad.nombre) || [],
+                licenseNumber: doc.licenseNumber || "N/A",
+                status: doc.status || "Activo"
+            }));
+            setDoctors(mappedDoctors);
+            setTotalDoctors(response.data.total);
+            setTotalPages(Math.ceil(response.data.total / take));
         } catch (error) {
             handleAxiosError(error);
+        } finally {
+            setLoading(false);
         }
     }
 
     useEffect(() => {
-        Alldoctor();
-    }, []);
+        const timeoutId = setTimeout(() => {
+            Alldoctor(currentPage, rowsPerPage, searchTerm);
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, rowsPerPage, searchTerm]);
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearchTerm(e.target.value);
+        setCurrentPage(1);
+    };
     return (
         <div className="max-w-7xl mx-auto">
             {/* Header */}
@@ -156,8 +145,8 @@ export default function DoctorsPage() {
                         <input
                             type="text"
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Buscar por nombre, especialidad..."
+                            onChange={handleSearchChange}
+                            placeholder="Buscar por nombre, cédula..."
                             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
                         />
                     </div>
@@ -176,9 +165,16 @@ export default function DoctorsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            <AnimatePresence>
-                                {filteredDoctors.map((doc) => (
-                                    <motion.tr
+                            {loading && doctors.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                                        Cargando doctores...
+                                    </td>
+                                </tr>
+                            ) : (
+                                <AnimatePresence>
+                                    {doctors.map((doc) => (
+                                        <motion.tr
                                         key={doc.id}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
@@ -192,7 +188,7 @@ export default function DoctorsPage() {
                                                 </div>
                                                 <div>
                                                     <p className="font-semibold text-gray-900">{doc.fullName || "Sin Nombre"}</p>
-                                                    <p className="text-xs text-gray-500">{doc.cedula}</p>
+                                                    <p className="text-xs text-gray-500">{doc.tipo_cedula}-{doc.cedula}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -239,14 +235,60 @@ export default function DoctorsPage() {
                                                     className="p-2 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </AnimatePresence>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </AnimatePresence>
+                            )}
                         </tbody>
                     </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="p-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-500 gap-4">
+                    <div className="flex items-center gap-2">
+                        <span>Mostrar</span>
+                        <select
+                            value={rowsPerPage}
+                            onChange={(e) => {
+                                setRowsPerPage(Number(e.target.value));
+                                setCurrentPage(1);
+                            }}
+                            className="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 p-1.5 focus:outline-none"
+                        >
+                            <option value={5}>5</option>
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                        </select>
+                        <span>filas por página</span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <span>
+                            Mostrando {totalDoctors === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} a {Math.min(currentPage * rowsPerPage, totalDoctors)} de {totalDoctors} resultados
+                        </span>
+                        
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1 || loading}
+                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Anterior
+                            </button>
+                            <span className="px-2 font-medium">{currentPage} / {totalPages > 0 ? totalPages : 1}</span>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                disabled={currentPage === totalPages || totalPages === 0 || loading}
+                                className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

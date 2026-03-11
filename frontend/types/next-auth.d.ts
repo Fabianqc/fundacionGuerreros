@@ -6,6 +6,7 @@ declare module "next-auth" {
             backendAccessToken?: string;
             backendRefreshToken?: string;
         } & DefaultSession["user"];
+        error?: string;
     }
 
     interface User extends DefaultUser {

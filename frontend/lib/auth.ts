@@ -2,6 +2,7 @@ import { AuthOptions } from "next-auth";
 import axios from "axios";
 import Credentials from "next-auth/providers/credentials";
 import { JWT } from "next-auth/jwt";
+import { handleAxiosError } from "./handleAxiosError";
 
 // Helper to refresh the token
 async function refreshAccessToken(token: JWT) {
@@ -10,6 +11,7 @@ async function refreshAccessToken(token: JWT) {
             oldToken: token.backendRefreshToken
         });
 
+
         return {
             ...token,
             backendAccessToken: response.data.access_token,
@@ -17,9 +19,8 @@ async function refreshAccessToken(token: JWT) {
             backendAccessTokenExpires: Date.now() + response.data.expires_in * 1000
         }
     } catch (error) {
-        console.error("Error refreshing access token", error);
+        handleAxiosError(error);
         return {
-            ...token,
             error: "RefreshAccessTokenError",
         }
     }
@@ -112,6 +113,7 @@ export const authOptions: AuthOptions = {
             }
             // We save the token that the backend returns in the session object
             session.user.backendAccessToken = token.backendAccessToken;
+            session.error = token.error;
             return session;
         }
     },

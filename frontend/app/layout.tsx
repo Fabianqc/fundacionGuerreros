@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 };
 
 import { Providers } from "./providers";
+import { SessionGuard } from "@/app/components/SessionGuard";
 
 export default function RootLayout({
   children,
@@ -31,7 +32,9 @@ export default function RootLayout({
     <html lang="es">
       <body className="antialiased">
         <Providers>
-          {children}
+          <SessionGuard>
+            {children}
+          </SessionGuard>
         </Providers>
       </body>
     </html>

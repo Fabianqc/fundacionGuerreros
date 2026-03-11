@@ -23,6 +23,66 @@ export class DoctorService {
         private readonly doctorHasEspecialidadesService: DoctorHasEspecialidadesService) { }
 
 
+    async update(updateDoctorDto: UpdateDoctorDto) {
+        const { ci_doctor, tipo_cedula, especialidades } = updateDoctorDto;
+        
+        if (ci_doctor === undefined || tipo_cedula === undefined) {
+            throw new BadRequestException('ci_doctor y tipo_cedula son requeridos para actualizar');
+        }
+
+        const queryRunner = this.dataSource.createQueryRunner();
+        await queryRunner.connect();
+        await queryRunner.startTransaction();
+        try {
+            const persona = await queryRunner.manager.findOne(Persona, { where: { cedula: ci_doctor, tipo_cedula: tipo_cedula } });
+            if (!persona) {
+                throw new BadRequestException('Persona no encontrada');
+            }
+            const doctor = await queryRunner.manager.findOne(Doctor, { where: { persona: { id: persona.id } } });
+            if (!doctor) {
+                throw new BadRequestException('Doctor no encontrado');
+            }
+            if (updateDoctorDto.licenseNumber !== undefined) {
+                doctor.licenseNumber = updateDoctorDto.licenseNumber;
+            }
+            if (updateDoctorDto.status !== undefined) {
+                doctor.status = updateDoctorDto.status;
+            }
+            await queryRunner.manager.save(doctor);
+
+            if (especialidades !== undefined) {
+                // Eliminar especialidades antiguas para reasignar las nuevas
+                await queryRunner.manager.delete(DoctorHasEspecialidade, { doctor: { id: doctor.id } });
+
+                await this.doctorHasEspecialidadesService.create({
+                    tipo_cedula: tipo_cedula,
+                    ci_doctor: ci_doctor,
+                    name_especialidad: especialidades
+                }, queryRunner.manager);
+            }
+            await queryRunner.commitTransaction();
+        } catch (error) {
+            await queryRunner.rollbackTransaction();
+            throw error;
+        } finally {
+            await queryRunner.release();
+        }
+        return;
+    }
+
+    async findAllWithLimit(skip: number, take: number, search: string) {
+        const queryBuilder = this.doctorRepository.createQueryBuilder('doctor');
+        queryBuilder.leftJoinAndSelect('doctor.persona', 'persona');
+        queryBuilder.leftJoinAndSelect('doctor.doctor_especialidades', 'doctor_especialidades');
+        queryBuilder.leftJoinAndSelect('doctor_especialidades.especialidad', 'especialidad');
+        if (search) {
+            queryBuilder.where('persona.fullname ILIKE :search OR persona.cedula ILIKE :search', { search: `%${search}%` });
+        }
+        queryBuilder.skip(skip);
+        queryBuilder.take(take);
+        const [doctors, total] = await queryBuilder.getManyAndCount();
+        return { doctors, total };
+    }
 
     async findAll() {
         const doctors = await this.doctorRepository.find({ relations: ['persona', 'doctor_especialidades.especialidad'] });
@@ -36,7 +96,13 @@ export class DoctorService {
     }
 
     async findOne(ci_doctor: string, tipo_cedula: string) {
-        return await this.doctorRepository.findOne({ where: { persona: { cedula: ci_doctor, tipo_cedula: tipo_cedula } } });
+        const doctor = await this.doctorRepository.findOne({ where: { persona: { cedula: ci_doctor, tipo_cedula: tipo_cedula } }, relations: ['doctor_especialidades.especialidad'] });
+        if (!doctor) {
+            throw new BadRequestException('Doctor no encontrado');
+        }
+        const transformed = instanceToPlain(doctor);
+        transformed.doctor_especialidades = doctor.doctor_especialidades?.map(de => de.especialidad.nombre) || [];
+        return transformed;
     }
 
     async create(createDoctorDto: CreateDoctorDto) {

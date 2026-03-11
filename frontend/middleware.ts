@@ -1,3 +1,17 @@
-export { default } from "next-auth/middleware"
+import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-export const config = { matcher: ["/admin/:path*"] }
+export default withAuth(
+    function middleware(req) {
+        if (req.nextauth.token?.error === "RefreshAccessTokenError") {
+            return NextResponse.redirect(new URL("/login", req.url));
+        }
+    },
+    {
+        callbacks: {
+            authorized: ({ token }) => !!token,
+        },
+    }
+);
+
+export const config = { matcher: ["/admin/:path*"] };

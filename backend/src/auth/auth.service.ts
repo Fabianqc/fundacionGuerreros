@@ -8,6 +8,14 @@ import { EventusersessionService } from '../eventusersession/eventusersession.se
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/RefreshToken.dto';
 
+interface JwtPayload {
+    email: string;
+    sub: string;
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+}
+
 @Injectable()
 export class AuthService {
     constructor(
@@ -61,12 +69,16 @@ export class AuthService {
     }
 
     async refreshToken(refreshTokenDto: RefreshTokenDto) {
+
         try {
-            const payload = await this.jwtService.verifyAsync(refreshTokenDto.oldToken, {
+
+            const payload: JwtPayload = await this.jwtService.verifyAsync(refreshTokenDto.oldToken, {
                 secret: process.env.JWT_SECRET,
             });
+            if (!payload) {
+                throw new UnauthorizedException('Invalid token');
+            }
             const user = await this.usersService.findOneByEmail(payload.email);
-            console.log(user);
             if (!user) {
                 throw new UnauthorizedException('User not found');
             }
