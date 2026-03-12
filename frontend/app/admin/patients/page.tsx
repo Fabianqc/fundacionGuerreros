@@ -25,6 +25,9 @@ interface Patient {
     cedula: string;
     email: string;
     telefono: string;
+    direccion: string;
+    sexo: string;
+    nacimiento: any;
     ultimavisita: string;
     status: string;
 }
@@ -51,7 +54,7 @@ export default function PatientsPage() {
 
     const skip = (page - 1) * take;
 
-    const { data, isLoading: loading, isError, error: queryError, refetch } = useQuery({
+    const { data, isLoading: loading, isFetching, isError, error: queryError, refetch } = useQuery({
         queryKey: ["patients", skip, take, debouncedSearch],
         queryFn: async () => {
             const response = await axiosClientInstance.get(`/paciente`, {
@@ -61,8 +64,22 @@ export default function PatientsPage() {
                     take,
                 }
             });
+            const mappedPatients = response.data.pacientes.map((p: any) => {
+                const persona = p.persona || p;
+                return {
+                    ...p,
+                    ...persona, // Spread persona to ensure we have all fields even if nested
+                    Fullname: persona.Fullname || persona.fullname || p.Fullname || p.fullname || "Sin Nombre",
+                    fullname: persona.fullname || persona.Fullname || p.fullname || p.Fullname || "Sin Nombre",
+                    telefono: persona.telefono || persona.Telefono || p.telefono || p.phone || "",
+                    direccion: persona.direccion || persona.Direccion || p.direccion || "",
+                    sexo: persona.sexo || persona.Sexo || p.sexo || "",
+                    nacimiento: persona.nacimiento || persona.Nacimiento || p.nacimiento || null,
+                    email: persona.email || persona.Email || p.email || ""
+                };
+            });
             return {
-                pacientes: response.data.pacientes as Patient[],
+                pacientes: mappedPatients as Patient[],
                 pages: response.data.pages as number,
                 count: response.data.count as number
             };
@@ -148,6 +165,16 @@ export default function PatientsPage() {
                 </div>
 
                 <div className="overflow-x-auto min-h-[500px]">
+                    {isFetching && patients.length > 0 && (
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-purple-100 overflow-hidden z-10">
+                            <motion.div 
+                                className="h-full bg-purple-600"
+                                initial={{ x: "-100%" }}
+                                animate={{ x: "100%" }}
+                                transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                            />
+                        </div>
+                    )}
                     {loading && patients.length === 0 ? (
                         <TableSkeleton columns={6} />
                     ) : (

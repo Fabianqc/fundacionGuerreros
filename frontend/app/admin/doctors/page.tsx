@@ -11,10 +11,10 @@ import {
     Award,
     Phone,
     Mail,
+    Loader2
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DoctorModal from "./components/DoctorModal";
-import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { useNotificationStore } from "@/app/store/useNotificationStore";
 import TableSkeleton from "@/app/components/ui/TableSkeleton";
@@ -25,8 +25,12 @@ interface Doctor {
     id: string;
     fullName: string;
     cedula: string;
+    telefono: string;
     phone: string;
     email: string;
+    direccion: string;
+    sexo: string;
+    nacimiento: any;
     specialities: string[];
     licenseNumber: string;
     tipo_cedula: string;
@@ -52,7 +56,7 @@ export default function DoctorsPage() {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const { data, isLoading: loading } = useQuery({
+    const { data, isLoading: loading, isFetching } = useQuery({
         queryKey: ['doctors', currentPage, rowsPerPage, debouncedSearchTerm],
         queryFn: async () => {
             const response = await axiosClientInstance.get('/doctor', {
@@ -68,8 +72,12 @@ export default function DoctorsPage() {
                 fullName: doc.persona?.fullname || 'Sin Nombre',
                 cedula: doc.persona?.cedula ? `${doc.persona.cedula}` : "",
                 tipo_cedula: doc.persona?.tipo_cedula || "",
-                phone: doc.persona?.telefono || "No aplica",
+                telefono: doc.persona?.telefono || "No aplica",
+                phone: doc.persona?.telefono || "No aplica", // Keep for compat if used elsewhere
                 email: doc.persona?.email || "No aplica",
+                direccion: doc.persona?.direccion || "",
+                sexo: doc.persona?.sexo || "",
+                nacimiento: doc.persona?.nacimiento || null,
                 specialities: doc.doctor_especialidades?.map((spec: any) => spec.especialidad.nombre) || [],
                 licenseNumber: doc.licenseNumber || "N/A",
                 status: doc.status || "Activo"
@@ -168,13 +176,17 @@ export default function DoctorsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {loading && doctors.length > 0 ? (
+                            {isFetching && doctors.length > 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                        Actualizando...
+                                    <td colSpan={5} className="px-6 py-4">
+                                        <div className="flex items-center justify-center gap-2 text-purple-600 animate-pulse font-medium">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Sincronizando cambios...
+                                        </div>
                                     </td>
                                 </tr>
-                            ) : (
+                            ) : null}
+                            {!loading && (
                                 <AnimatePresence>
                                     {doctors.map((doc) => (
                                         <motion.tr
@@ -209,7 +221,7 @@ export default function DoctorsPage() {
                                                 <div className="flex flex-col gap-1">
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                                         <Phone className="w-3.5 h-3.5 text-gray-400" />
-                                                        {doc.phone}
+                                                        {doc.telefono}
                                                     </div>
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                                         <Mail className="w-3.5 h-3.5 text-gray-400" />

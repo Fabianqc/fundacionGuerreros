@@ -40,7 +40,7 @@ export default function PathologiesPage() {
     const { addNotification } = useNotificationStore();
     const queryClient = useQueryClient();
 
-    const { data: pathologies = [], isLoading, error: queryError, isError } = useQuery({
+    const { data: pathologies = [], isLoading, isFetching, error: queryError, isError } = useQuery({
         queryKey: ["pathologies"],
         queryFn: async () => {
             const response = await axiosClientInstance.get("/patologia");
@@ -159,6 +159,16 @@ export default function PathologiesPage() {
                     )}
                 </div>
 
+                {isFetching && pathologies.length > 0 && (
+                    <div className="absolute top-[80px] left-0 right-0 h-1 bg-purple-100 overflow-hidden z-10">
+                        <motion.div 
+                            className="h-full bg-purple-600"
+                            initial={{ x: "-100%" }}
+                            animate={{ x: "100%" }}
+                            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+                        />
+                    </div>
+                )}
                 {/* List Content */}
                 {isLoading && pathologies.length === 0 ? (
                     <TableSkeleton columns={4} />

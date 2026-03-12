@@ -147,6 +147,8 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["patients"] });
+            queryClient.invalidateQueries({ queryKey: ["patient", patientData.cedula, patientData.tipo_cedula] });
+            
             addNotification("success", isNewPatient ? "Paciente registrado exitosamente" : "Información actualizada correctamente");
             onSubmit(patientData);
             onCancel();

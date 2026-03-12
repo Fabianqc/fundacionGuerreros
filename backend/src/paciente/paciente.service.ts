@@ -93,6 +93,9 @@ export class PacienteService {
         tipo_cedula: data.persona.tipo_cedula,
         email: data.persona.email,
         telefono: data.persona.telefono,
+        direccion: data.persona.direccion,
+        sexo: data.persona.sexo,
+        nacimiento: data.persona.nacimiento,
         ultimavisita: "",
         status: "Activo",
       };

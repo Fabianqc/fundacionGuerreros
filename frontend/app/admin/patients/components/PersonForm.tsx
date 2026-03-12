@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Phone, MapPin, Mail, Calendar } from "lucide-react";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
@@ -8,10 +8,7 @@ import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface PersonFormProps {
-    initialData?: {
-        cedula?: string;
-        tipoCedula?: string;
-    };
+    initialData?: any; // Accepting full person object
     onSubmit: (data: CreatePersonaInterface) => void;
     onCancel: () => void;
 }
@@ -20,16 +17,27 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
     const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
 
-    const [formData, setFormData] = useState<CreatePersonaInterface>({
-        fullname: "",
-        tipo_cedula: initialData?.tipoCedula || "V",
-        cedula: initialData?.cedula || "",
-        telefono: "",
-        nacimiento: new Date(),
-        sexo: "", // Changed from genero to match schema implication or keep consistent
-        direccion: "",
-        email: ""
+    const isExisting = !!(initialData?.fullname || initialData?.Fullname || initialData?.fullName || initialData?.FullName);
+
+    const getInitialFormData = (data: any): CreatePersonaInterface => ({
+        fullname: data?.fullname || data?.Fullname || data?.fullName || data?.FullName || "",
+        tipo_cedula: data?.tipo_cedula || data?.tipoCedula || data?.Tipo_Cedula || "V",
+        cedula: data?.cedula || data?.Cedula || "",
+        telefono: data?.telefono || data?.Telefono || data?.phone || data?.Phone || "",
+        nacimiento: data?.nacimiento ? new Date(data.nacimiento) : (data?.Nacimiento ? new Date(data.Nacimiento) : new Date()),
+        sexo: data?.sexo || data?.Sexo || data?.genero || data?.Gender || "",
+        direccion: data?.direccion || data?.Direccion || data?.address || data?.Address || "",
+        email: data?.email || data?.Email || ""
     });
+
+    const [formData, setFormData] = useState<CreatePersonaInterface>(getInitialFormData(initialData));
+
+    // Sync state when initialData changes (vital for modal reuse)
+    useEffect(() => {
+        if (initialData) {
+            setFormData(getInitialFormData(initialData));
+        }
+    }, [initialData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -42,8 +50,6 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
             return response.data;
         },
         onSuccess: (data) => {
-            // Invalidate relevant queries if needed, e.g., ['personas']
-            // queryClient.invalidateQueries({ queryKey: ['personas'] });
             onSubmit(data);
         },
         onError: (err: any) => {
@@ -66,14 +72,24 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
             nacimiento: formData.nacimiento instanceof Date ? formData.nacimiento : new Date(formData.nacimiento)
         };
 
-        createPersonaMutation.mutate(data);
+        if (isExisting) {
+            onSubmit(data); // Don't create if it already exists
+        } else {
+            createPersonaMutation.mutate(data);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 animate-fadeIn">
-            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-4">
-                <h3 className="text-sm font-semibold text-purple-900 mb-1">Registrar Nueva Persona</h3>
-                <p className="text-xs text-purple-600">La cédula ingresada no existe. Por favor registre los datos básicos.</p>
+            <div className={`p-4 rounded-xl border mb-4 ${isExisting ? "bg-green-50 border-green-100" : "bg-purple-50 border-purple-100"}`}>
+                <h3 className={`text-sm font-semibold mb-1 ${isExisting ? "text-green-900" : "text-purple-900"}`}>
+                    {isExisting ? "Persona Encontrada" : "Registrar Nueva Persona"}
+                </h3>
+                <p className={`text-xs ${isExisting ? "text-green-600" : "text-purple-600"}`}>
+                    {isExisting 
+                        ? "Confirme o actualice los datos de la persona antes de continuar." 
+                        : "La cédula ingresada no existe. Por favor registre los datos básicos."}
+                </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -84,7 +100,8 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                             name="tipo_cedula"
                             value={formData.tipo_cedula}
                             onChange={handleChange}
-                            className="w-20 px-2 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none"
+                            disabled={true}
+                            className="w-20 px-2 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 focus:ring-0 outline-none cursor-not-allowed appearance-none"
                         >
                             <option value="V">V</option>
                             <option value="E">E</option>
@@ -99,7 +116,7 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                                 name="cedula"
                                 value={formData.cedula}
                                 onChange={handleChange}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium cursor-not-allowed"
+                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium cursor-not-allowed outline-none"
                                 readOnly
                             />
                         </div>
@@ -210,9 +227,11 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                 <button
                     type="submit"
                     disabled={createPersonaMutation.isPending}
-                    className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md shadow-purple-200 transition-all disabled:opacity-50"
+                    className={`px-4 py-2 text-sm text-white rounded-lg transition-all disabled:opacity-50 shadow-md ${
+                        isExisting ? "bg-green-600 hover:bg-green-700 shadow-green-200" : "bg-purple-600 hover:bg-purple-700 shadow-purple-200"
+                    }`}
                 >
-                    {createPersonaMutation.isPending ? "Guardando..." : "Guardar Persona"}
+                    {createPersonaMutation.isPending ? "Guardando..." : isExisting ? "Confirmar y Continuar" : "Guardar Persona"}
                 </button>
             </div>
         </form>

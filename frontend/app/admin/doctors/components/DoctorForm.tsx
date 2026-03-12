@@ -112,12 +112,14 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
             }
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['doctors'] });
+            queryClient.invalidateQueries({ queryKey: ['doctor', doctorData.ci_doctor, doctorData.tipo_cedula] });
+            
             onSubmit({
                 ...doctorData,
                 horarios: []
             });
             addNotification("success", isEditing ? "Doctor actualizado exitosamente" : "Doctor guardado exitosamente");
-            queryClient.invalidateQueries({ queryKey: ['doctors'] });
         },
         onError: (error) => {
             addNotification("error", handleAxiosError(error));
