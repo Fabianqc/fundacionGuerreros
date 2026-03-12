@@ -255,7 +255,7 @@ export default function CreateConsultationModal({ isOpen, onClose }: CreateConsu
                                         <PatientForm
                                             onSubmit={handlePatientSubmit}
                                             onCancel={handleClose}
-                                            submitLabel="Guardar y Continuar a Consulta"
+                                            initialData={personData}
                                         />
                                     </motion.div>
                                 )}

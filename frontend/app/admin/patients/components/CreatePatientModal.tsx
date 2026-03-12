@@ -7,7 +7,7 @@ import PatientForm from "./PatientForm";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { handleAxiosError } from "@/lib/handleAxiosError";
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
 
 interface CreatePatientModalProps {
     isOpen: boolean;
@@ -24,7 +24,7 @@ export default function CreatePatientModal({ isOpen, onClose, onSuccess, patient
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<CreatePersonaInterface>({} as CreatePersonaInterface);
     const [error, setError] = useState<string | null>(null);
-    const { addNotification } = useNotification();
+    const { addNotification } = useNotificationStore();
 
     // Reset state when modal opens/closes or patientToEdit changes
     const [prevIsOpen, setPrevIsOpen] = useState(isOpen);

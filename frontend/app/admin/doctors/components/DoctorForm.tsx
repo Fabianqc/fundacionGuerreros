@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import DoctorSchedule, { ScheduleData } from "./DoctorSchedule";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { handleAxiosError } from "@/lib/handleAxiosError";
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
 import { CreateDoctorInterface } from "@/types/create-doctor.interface";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 
@@ -28,7 +28,7 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const { addNotification } = useNotification();
+    const { addNotification } = useNotificationStore();
 
     // Doctor Basic Data
     const [doctorData, setDoctorData] = useState<CreateDoctorInterface>({

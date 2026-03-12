@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle, AlertCircle, Info, X, AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
-import { NotificationType } from "../context/NotificationContext";
+import { NotificationType } from "../store/useNotificationStore";
 
 interface NotificationToastProps {
     id: string;

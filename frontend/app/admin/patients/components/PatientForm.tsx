@@ -7,7 +7,8 @@ import { CreatePacienteInterface } from "@/types/create-paciente.interface";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 
 
@@ -18,9 +19,9 @@ interface PatientFormProps {
 }
 
 export default function PatientForm({ onSubmit, onCancel, initialData }: PatientFormProps) {
-    const [loading, setLoading] = useState(false);
-    const [isNewPatient, setIsNewPatient] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const isNewPatient = !initialData?.cedula;
+    const queryClient = useQueryClient();
+    const { addNotification } = useNotificationStore();
 
     const [patientData, setPatientData] = useState<CreatePacienteInterface>({
         cedula: initialData?.cedula || "",
@@ -45,6 +46,66 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
         observaciones: ""
     });
 
+    const HOUSING_OPTIONS = ["QUINTA", "APTO", "CASA", "RANCHO"];
+    const TENENCIA_OPTIONS = ["PROPIA", "ALQUILADA", "CEDIDA", "PRESTADA"];
+
+    const [isCustomHousing, setIsCustomHousing] = useState(false);
+    const [isCustomTenencia, setIsCustomTenencia] = useState(false);
+
+    const { isLoading: isLoadingPatient } = useQuery({
+        queryKey: ['patient', initialData?.cedula, initialData?.tipo_cedula],
+        queryFn: async () => {
+            const response = await axiosClientInstance.get(`/paciente/${initialData.cedula}/${initialData.tipo_cedula}`);
+            return response.data;
+        },
+        enabled: !isNewPatient, // Only fetch if we're editing an existing patient
+    });
+
+    // We use useEffect to populate the form once data arrives from the query.
+    // If we wanted a fully uncontrolled form, we'd use `defaultValues` in react-hook-form, 
+    // but here we maintain the existing controlled state approach.
+    const { data: fetchedData } = useQuery<any>({
+        queryKey: ['patient', initialData?.cedula, initialData?.tipo_cedula],
+        enabled: !isNewPatient
+    });
+
+    useEffect(() => {
+        if (fetchedData) {
+            const personaData = fetchedData.persona || fetchedData; // fallback if persona object isn't nested but flat
+            setPatientData(prev => ({
+                ...prev,
+                cedula: personaData?.cedula || prev.cedula,
+                tipo_cedula: personaData?.tipo_cedula || prev.tipo_cedula,
+                estadoCivil: fetchedData.estadoCivil || "",
+                lugarNacimiento: fetchedData.lugarNacimiento || "",
+                paisNacimiento: fetchedData.paisNacimiento || "",
+                ocupacion: fetchedData.ocupacion || "",
+                gradoInstruccion: fetchedData.gradoInstruccion || "",
+                profesion: fetchedData.profesion || "",
+                salarioMensual: fetchedData.salarioMensual || "",
+                carnetPatria: fetchedData.carnetPatria || false,
+                tipoDeSolicitud: fetchedData.tipoDeSolicitud || "",
+                alergico: fetchedData.alergico || "",
+                tipoVivienda: fetchedData.tipoVivienda || "",
+                descripcionVivienda: fetchedData.descripcionVivienda || "",
+                nHabitaciones: fetchedData.nHabitaciones || 0,
+                nBanos: fetchedData.nBanos || 0,
+                cocina: fetchedData.cocina || false,
+                salaComedor: fetchedData.salaComedor || false,
+                tenenciaVivienda: fetchedData.tenenciaVivienda || "",
+                observaciones: fetchedData.observaciones || ""
+            }));
+            
+            if (!HOUSING_OPTIONS.includes(fetchedData.tipoVivienda) && fetchedData.tipoVivienda) {
+                 setIsCustomHousing(true);
+            }
+            if (!TENENCIA_OPTIONS.includes(fetchedData.tenenciaVivienda) && fetchedData.tenenciaVivienda) {
+                 setIsCustomTenencia(true);
+            }
+        }
+    }, [fetchedData, setIsCustomHousing, setIsCustomTenencia]);
+
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
         setPatientData(prev => ({
@@ -53,11 +114,8 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
         }));
     };
 
-    const HOUSING_OPTIONS = ["QUINTA", "APTO", "CASA", "RANCHO"];
-    const TENENCIA_OPTIONS = ["PROPIA", "ALQUILADA", "CEDIDA", "PRESTADA"];
-
-    const [isCustomHousing, setIsCustomHousing] = useState(false);
-    const [isCustomTenencia, setIsCustomTenencia] = useState(false);
+    // Removed duplicate HOUSING_OPTIONS and TENENCIA_OPTIONS declarations here.
+    // Removed duplicate isCustomHousing and isCustomTenencia state declarations here.
 
     const handleHousingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
@@ -87,81 +145,41 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
         setPatientData(prev => ({ ...prev, [name]: checked }));
     };
 
-    const { addNotification } = useNotification();
+    const mutation = useMutation({
+        mutationFn: async (submissionData: any) => {
+            if (isNewPatient) {
+                return await axiosClientInstance.post("/paciente", submissionData);
+            } else {
+                return await axiosClientInstance.patch(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`, submissionData);
+            }
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["patients"] });
+            addNotification("success", isNewPatient ? "Paciente registrado exitosamente" : "Información actualizada correctamente");
+            onSubmit(patientData);
+            onCancel();
+        },
+        onError: (error) => {
+            const errorMessage = handleAxiosError(error);
+            addNotification("error", errorMessage);
+        }
+    });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setError(null);
-
-        try {
-            // Clean data: convert empty strings to null for nullable fields
-            // This is still needed because form inputs might set empty strings
-            const submissionData = Object.fromEntries(
-                Object.entries(patientData).map(([key, value]) => {
-                    if (value === "") return [key, null];
-                    return [key, value];
-                })
-            );
-
-            let response;
-            if (isNewPatient) {
-                response = await axiosClientInstance.post("/paciente", submissionData);
-            } else {
-                response = await axiosClientInstance.patch(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`, submissionData);
-            }
-            console.log(response.data);
-            addNotification("success", isNewPatient ? "Paciente registrado exitosamente" : "Información actualizada correctamente");
-            onCancel();
-        } catch (error) {
-            console.log(error);
-            const errorMessage = handleAxiosError(error);
-            setError(errorMessage);
-            addNotification("error", errorMessage);
-        } finally {
-            setLoading(false);
-            onSubmit(patientData);
-        }
+        
+        const submissionData = Object.fromEntries(
+            Object.entries(patientData).map(([key, value]) => {
+                if (value === "") return [key, null];
+                return [key, value];
+            })
+        );
+        mutation.mutate(submissionData);
     };
 
-    useEffect(() => {
-        if (initialData) {
-            axiosClientInstance.get(`/paciente/${initialData?.cedula}/${initialData?.tipo_cedula}`)
-                .then(response => {
-                    const backendData = response.data;
-                    if (backendData) {
-                        setIsNewPatient(false);
-                        console.log(backendData);
-                    }
-                    setPatientData(prev => ({
-                        ...prev,
-                        cedula: backendData.persona?.cedula || prev.cedula,
-                        tipo_cedula: backendData.persona?.tipo_cedula || prev.tipo_cedula,
-                        estadoCivil: backendData.estadoCivil || "",
-                        lugarNacimiento: backendData.lugarNacimiento || "",
-                        paisNacimiento: backendData.paisNacimiento || "",
-                        ocupacion: backendData.ocupacion || "",
-                        gradoInstruccion: backendData.gradoInstruccion || "",
-                        profesion: backendData.profesion || "",
-                        salarioMensual: backendData.salarioMensual || "",
-                        carnetPatria: backendData.carnetPatria || false,
-                        tipoDeSolicitud: backendData.tipoDeSolicitud || "",
-                        alergico: backendData.alergico || "",
-                        tipoVivienda: backendData.tipoVivienda || "",
-                        descripcionVivienda: backendData.descripcionVivienda || "",
-                        nHabitaciones: backendData.nHabitaciones || 0,
-                        nBanos: backendData.nBanos || 0,
-                        cocina: backendData.cocina || false,
-                        salaComedor: backendData.salaComedor || false,
-                        tenenciaVivienda: backendData.tenenciaVivienda || "",
-                        observaciones: backendData.observaciones || ""
-                    }));
-                })
-                .catch(error => {
-                    setError(handleAxiosError(error));
-                });
-        }
-    }, [initialData]);
+    if (isLoadingPatient) {
+        return <div className="p-8 text-center text-gray-500">Cargando datos del paciente...</div>;
+    }
     return (
         <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-xl p-5 space-y-4 shadow-sm animate-fadeIn">
             <div className="pb-3 border-b border-gray-50 mb-2">
@@ -450,9 +468,9 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
                     className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none resize-none"
                 />
             </div>
-            {error && (
+            {mutation.isError && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                    {error}
+                    {handleAxiosError(mutation.error)}
                 </div>
             )}
             <div className="pt-4 flex justify-end gap-3">
@@ -465,7 +483,7 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
                 </button>
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={mutation.isPending}
                     className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center gap-2"
                 >
                     <Save className="w-4 h-4" />

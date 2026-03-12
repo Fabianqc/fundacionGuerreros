@@ -6,6 +6,7 @@ import AddressAutocomplete from "./AddressAutocomplete";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 interface PersonFormProps {
     initialData?: {
         cedula?: string;
@@ -16,7 +17,7 @@ interface PersonFormProps {
 }
 
 export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFormProps) {
-    const [loading, setLoading] = useState(false);
+    const queryClient = useQueryClient();
     const [error, setError] = useState<string | null>(null);
 
     const [formData, setFormData] = useState<CreatePersonaInterface>({
@@ -35,36 +36,37 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const createPersonaMutation = useMutation({
+        mutationFn: async (data: CreatePersonaInterface) => {
+            const response = await axiosClientInstance.post("/personas", data);
+            return response.data;
+        },
+        onSuccess: (data) => {
+            // Invalidate relevant queries if needed, e.g., ['personas']
+            // queryClient.invalidateQueries({ queryKey: ['personas'] });
+            onSubmit(data);
+        },
+        onError: (err: any) => {
+            setError(handleAxiosError(err));
+            console.error(err);
+        }
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setError(null);
-        console.log(formData);
-        try {
-            if (!formData.fullname || !formData.telefono || !formData.nacimiento || !formData.sexo || !formData.direccion) {
-                setError("Todos los campos son obligatorios");
-                return;
-            }
-            const data: CreatePersonaInterface = {
-                fullname: formData.fullname,
-                tipo_cedula: formData.tipo_cedula,
-                cedula: formData.cedula,
-                telefono: formData.telefono,
-                nacimiento: new Date(formData.nacimiento),
-                sexo: formData.sexo,
-                direccion: formData.direccion,
-                email: formData.email
-            }
-
-            const response = await axiosClientInstance.post("/personas", data);
-            onSubmit(response.data);
-        } catch (error) {
-            setError(handleAxiosError(error));
-            console.log(error);
-        } finally {
-            setLoading(false);
-            console.log(error);
+        
+        if (!formData.fullname || !formData.telefono || !formData.nacimiento || !formData.sexo || !formData.direccion) {
+            setError("Todos los campos son obligatorios");
+            return;
         }
+
+        const data: CreatePersonaInterface = {
+            ...formData,
+            nacimiento: formData.nacimiento instanceof Date ? formData.nacimiento : new Date(formData.nacimiento)
+        };
+
+        createPersonaMutation.mutate(data);
     };
 
     return (
@@ -207,9 +209,10 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
                 </button>
                 <button
                     type="submit"
-                    className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md shadow-purple-200 transition-all"
+                    disabled={createPersonaMutation.isPending}
+                    className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md shadow-purple-200 transition-all disabled:opacity-50"
                 >
-                    Guardar Persona
+                    {createPersonaMutation.isPending ? "Guardando..." : "Guardar Persona"}
                 </button>
             </div>
         </form>

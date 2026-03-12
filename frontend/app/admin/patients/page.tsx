@@ -12,13 +12,12 @@ import {
     Edit
 } from "lucide-react";
 import CreatePatientModal from "./components/CreatePatientModal";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
+import { useState, useEffect } from "react";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
-import { useEffect } from "react";
 import { handleAxiosError } from "@/lib/handleAxiosError";
-
-
-
 interface Patient {
     Fullname: string;
     tipo_cedula: string;
@@ -29,38 +28,50 @@ interface Patient {
     status: string;
 }
 export default function PatientsPage() {
-    const [patients, setPatients] = useState<Patient[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalItems, setTotalItems] = useState(0);
-    const [skip, setSkip] = useState(0);
     const [take, setTake] = useState(10);
     const [search, setSearch] = useState("");
-    const handlePageChange = () => {
-        setError(null);
-        setLoading(true);
-        axiosClientInstance.get(`/paciente`, {
-            params: {
-                search,
-                skip,
-                take,
-            }
-        })
-            .then((response) => {
-                setPatients(response.data.pacientes);
-                setTotalPages(response.data.pages);
-                setTotalItems(response.data.count);
-            })
-            .catch((error) => {
-                setError(handleAxiosError(error));
-            })
-            .finally(() => {
-                setLoading(false);
-            });
+    const [debouncedSearch, setDebouncedSearch] = useState("");
 
-    };
+    // State for Modal
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+            setPage(1); // Reset page on new search
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    const skip = (page - 1) * take;
+
+    const { data, isLoading: loading, isError, error: queryError, refetch } = useQuery({
+        queryKey: ["patients", skip, take, debouncedSearch],
+        queryFn: async () => {
+            const response = await axiosClientInstance.get(`/paciente`, {
+                params: {
+                    search: debouncedSearch,
+                    skip,
+                    take,
+                }
+            });
+            return {
+                pacientes: response.data.pacientes as Patient[],
+                pages: response.data.pages as number,
+                count: response.data.count as number
+            };
+        }
+    });
+
+    const error = isError ? handleAxiosError(queryError) : null;
+    const patients = data?.pacientes || [];
+    const totalPages = data?.pages || 1;
+    const totalItems = data?.count || 0;
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -71,40 +82,15 @@ export default function PatientsPage() {
         }
     };
 
-    // State for Modal
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-
-    // Debounce search
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (page !== 1) {
-                setSkip(0);
-                setPage(1);
-            } else {
-                handlePageChange();
-            }
-        }, 500);
-
-        return () => clearTimeout(timer);
-    }, [search]);
-
-    useEffect(() => {
-        handlePageChange();
-    }, [skip, take]);
-
     const handleNextPage = () => {
         if (page < totalPages) {
             setPage(prev => prev + 1);
-            setSkip(prev => prev + take);
         }
     };
 
     const handlePreviousPage = () => {
         if (page > 1) {
             setPage(prev => prev - 1);
-            setSkip(prev => prev - take);
         }
     };
 
@@ -117,7 +103,7 @@ export default function PatientsPage() {
                     setIsCreateModalOpen(false);
                     setSelectedPatient(null);
                 }}
-                onSuccess={handlePageChange}
+                onSuccess={() => refetch()}
                 patientToEdit={selectedPatient}
             />
 
@@ -160,14 +146,12 @@ export default function PatientsPage() {
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
-                    {loading && (
-                        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded relative" role="alert">
-                            <strong className="font-bold">Cargando...</strong>
-                        </div>
-                    )}
-                    {error && (
+                <div className="overflow-x-auto min-h-[500px]">
+                    {loading && patients.length === 0 ? (
+                        <TableSkeleton columns={6} />
+                    ) : (
+                        <>
+                            {error && (
                         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
                             <strong className="font-bold">Error:</strong>
                             <span className="block sm:inline"> {error}</span>
@@ -254,6 +238,8 @@ export default function PatientsPage() {
                             ))}
                         </tbody>
                     </table>
+                        </>
+                    )}
                 </div>
 
                 {/* Pagination */}
@@ -266,7 +252,6 @@ export default function PatientsPage() {
                             value={take}
                             onChange={(e) => {
                                 setTake(Number(e.target.value));
-                                setSkip(0);
                                 setPage(1);
                             }}
                             className="text-sm border border-gray-200 rounded-lg py-1 px-2 focus:outline-none focus:border-purple-500 text-gray-900"

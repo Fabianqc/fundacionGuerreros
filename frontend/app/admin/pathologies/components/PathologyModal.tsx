@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, AlertCircle } from "lucide-react";
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 
 interface Pathology {
@@ -21,7 +21,7 @@ interface PathologyModalProps {
 }
 
 export default function PathologyModal({ isOpen, onClose, onSubmit, initialData, existingNames }: PathologyModalProps) {
-    const { addNotification } = useNotification();
+    const { addNotification } = useNotificationStore();
     const [formData, setFormData] = useState<Pathology>({
         name: "",
         descripcion: "",

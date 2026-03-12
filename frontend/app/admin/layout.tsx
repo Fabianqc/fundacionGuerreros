@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import { NotificationProvider } from "../context/NotificationContext";
+import GlobalNotifications from "../components/GlobalNotifications";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     ];
 
     return (
-        <NotificationProvider>
+        <>
             <div className="min-h-screen bg-gray-50 flex">
                 {/* Mobile Sidebar Overlay */}
                 <AnimatePresence>
@@ -128,6 +128,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </main>
                 </div>
             </div>
-        </NotificationProvider>
+            <GlobalNotifications />
+        </>
     );
 }

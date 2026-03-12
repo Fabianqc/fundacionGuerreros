@@ -8,14 +8,17 @@ import {
     Stethoscope,
     Edit,
     Trash2,
+    Award,
     Phone,
     Mail,
-    Award
 } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DoctorModal from "./components/DoctorModal";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
+import Tooltip from "@/app/components/ui/Tooltip";
 
 // Types
 interface Doctor {
@@ -32,9 +35,8 @@ interface Doctor {
 
 export default function DoctorsPage() {
     // --- State ---
-    const [doctors, setDoctors] = useState<Doctor[]>([]);
-
     const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,21 +44,59 @@ export default function DoctorsPage() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
-    const [totalPages, setTotalPages] = useState(0);
-    const [totalDoctors, setTotalDoctors] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const { addNotification } = useNotification();
+    const { addNotification } = useNotificationStore();
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const { data, isLoading: loading } = useQuery({
+        queryKey: ['doctors', currentPage, rowsPerPage, debouncedSearchTerm],
+        queryFn: async () => {
+            const response = await axiosClientInstance.get('/doctor', {
+                params: {
+                    skip: (currentPage - 1) * rowsPerPage,
+                    take: rowsPerPage,
+                    search: debouncedSearchTerm
+                }
+            });
+            
+            const mappedDoctors = response.data.doctors.map((doc: any) => ({
+                id: doc.licenseNumber || doc.persona?.cedula || Math.random().toString(),
+                fullName: doc.persona?.fullname || 'Sin Nombre',
+                cedula: doc.persona?.cedula ? `${doc.persona.cedula}` : "",
+                tipo_cedula: doc.persona?.tipo_cedula || "",
+                phone: doc.persona?.telefono || "No aplica",
+                email: doc.persona?.email || "No aplica",
+                specialities: doc.doctor_especialidades?.map((spec: any) => spec.especialidad.nombre) || [],
+                licenseNumber: doc.licenseNumber || "N/A",
+                status: doc.status || "Activo"
+            }));
+            
+            return {
+                doctors: mappedDoctors as Doctor[],
+                totalDoctors: response.data.total as number,
+                totalPages: Math.ceil(response.data.total / rowsPerPage) as number
+            };
+        }
+    });
+
+    const doctors = data?.doctors || [];
+    const totalDoctors = data?.totalDoctors || 0;
+    const totalPages = data?.totalPages || 0;
 
     // --- Handlers ---
     const handleCreateDoctor = () => {
         setIsModalOpen(false);
-        Alldoctor();
+        queryClient.invalidateQueries({ queryKey: ['doctors'] });
     };
 
     const handleUpdateDoctor = () => {
         setEditingDoctor(null);
         setIsModalOpen(false);
-        Alldoctor();
+        queryClient.invalidateQueries({ queryKey: ['doctors'] });
     };
 
     const handleDeleteDoctor = (id: string) => {
@@ -72,46 +112,6 @@ export default function DoctorsPage() {
         setEditingDoctor(doctor);
         setIsModalOpen(true);
     };
-
-    const Alldoctor = async (page = currentPage, take = rowsPerPage, search = searchTerm) => {
-        setLoading(true);
-        try {
-            const response = await axiosClientInstance.get('/doctor', {
-                params: {
-                    skip: (page - 1) * take,
-                    take: take,
-                    search: search
-                }
-            });
-            
-            const mappedDoctors = response.data.doctors.map((doc: any) => ({
-                id: doc.licenseNumber || doc.persona?.cedula || Math.random().toString(),
-                fullName: doc.persona?.fullname || 'Sin Nombre',
-                cedula: doc.persona?.cedula ? `${doc.persona.cedula}` : "",
-                tipo_cedula: doc.persona?.tipo_cedula || "",
-                phone: doc.persona?.telefono || "No aplica",
-                email: doc.persona?.email || "No aplica",
-                specialities: doc.doctor_especialidades?.map((spec: any) => spec.especialidad.nombre) || [],
-                licenseNumber: doc.licenseNumber || "N/A",
-                status: doc.status || "Activo"
-            }));
-            setDoctors(mappedDoctors);
-            setTotalDoctors(response.data.total);
-            setTotalPages(Math.ceil(response.data.total / take));
-        } catch (error) {
-            handleAxiosError(error);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    useEffect(() => {
-        const timeoutId = setTimeout(() => {
-            Alldoctor(currentPage, rowsPerPage, searchTerm);
-        }, 500);
-        return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentPage, rowsPerPage, searchTerm]);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSearchTerm(e.target.value);
@@ -136,7 +136,10 @@ export default function DoctorsPage() {
             </div>
 
             {/* List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[500px]">
+            {loading && doctors.length === 0 ? (
+                <TableSkeleton columns={5} />
+            ) : (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[500px]">
                 {/* Toolbar */}
                 <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
                     <h2 className="text-lg font-bold text-gray-800">Listado de Especialistas</h2>
@@ -165,77 +168,81 @@ export default function DoctorsPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {loading && doctors.length === 0 ? (
+                            {loading && doctors.length > 0 ? (
                                 <tr>
                                     <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
-                                        Cargando doctores...
+                                        Actualizando...
                                     </td>
                                 </tr>
                             ) : (
                                 <AnimatePresence>
                                     {doctors.map((doc) => (
                                         <motion.tr
-                                        key={doc.id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
-                                        className="group"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold">
-                                                    {(doc.fullName || "Dr.").charAt(4) || "D"} {/* First letter after "Dr. " approx */}
+                                            key={doc.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
+                                            className="group"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold">
+                                                        {(doc.fullName || "Dr.").charAt(4) || "D"} {/* First letter after "Dr. " approx */}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900">{doc.fullName || "Sin Nombre"}</p>
+                                                        <p className="text-xs text-gray-500">{doc.tipo_cedula}-{doc.cedula}</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-900">{doc.fullName || "Sin Nombre"}</p>
-                                                    <p className="text-xs text-gray-500">{doc.tipo_cedula}-{doc.cedula}</p>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <Stethoscope className="w-4 h-4 text-gray-400" />
+                                                    <span className="text-sm text-gray-700">{doc.specialities?.join(", ")}</span>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <Stethoscope className="w-4 h-4 text-gray-400" />
-                                                <span className="text-sm text-gray-700">{doc.specialities?.join(", ")}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <Award className="w-3 h-3 text-gray-400" />
-                                                <span className="text-xs text-gray-500">{doc.licenseNumber}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                    <Phone className="w-3.5 h-3.5 text-gray-400" />
-                                                    {doc.phone}
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <Award className="w-3 h-3 text-gray-400" />
+                                                    <span className="text-xs text-gray-500">{doc.licenseNumber}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                    <Mail className="w-3.5 h-3.5 text-gray-400" />
-                                                    {doc.email}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <Phone className="w-3.5 h-3.5 text-gray-400" />
+                                                        {doc.phone}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <Mail className="w-3.5 h-3.5 text-gray-400" />
+                                                        {doc.email}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${doc.status === 'Activo'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-gray-100 text-gray-600'
-                                                }`}>
-                                                {doc.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2 text-gray-400">
-                                                <button
-                                                    onClick={() => openEditModal(doc)}
-                                                    className="p-2 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteDoctor(doc.id)}
-                                                    className="p-2 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${doc.status === 'Activo'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : 'bg-gray-100 text-gray-600'
+                                                    }`}>
+                                                    {doc.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Tooltip content="Editar Info" position="top">
+                                                        <button
+                                                            onClick={() => openEditModal(doc)}
+                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors active:scale-95"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip content="Dar de Baja" position="top">
+                                                        <button
+                                                            onClick={() => handleDeleteDoctor(doc.id)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors active:scale-95"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
                                                 </div>
                                             </td>
                                         </motion.tr>
@@ -291,6 +298,7 @@ export default function DoctorsPage() {
                     </div>
                 </div>
             </div>
+            )}
 
             <DoctorModal
                 isOpen={isModalOpen}

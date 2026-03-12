@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Search, MapPin, Loader2, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 export interface Address {
     display_name: string;
@@ -27,8 +28,7 @@ interface AddressAutocompleteProps {
 
 export default function AddressAutocomplete({ value = "", onChange, onSelectFull, placeholder = "Buscar dirección...", disabled = false }: AddressAutocompleteProps) {
     const [query, setQuery] = useState(value);
-    const [suggestions, setSuggestions] = useState<Address[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [debouncedQuery, setDebouncedQuery] = useState(query);
     const [isOpen, setIsOpen] = useState(false);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -50,33 +50,28 @@ export default function AddressAutocomplete({ value = "", onChange, onSelectFull
 
     // Debounce Search
     useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (query.length > 2 && isOpen) { // Only search if open to avoid unwanted calls on initial load
-                setIsLoading(true);
-                try {
-                    const response = await fetch(
-                        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5&countrycodes=ve`,
-                        {
-                            headers: {
-                                "Accept-Language": "es" // Prefer Spanish results
-                            }
-                        }
-                    );
-                    const data = await response.json();
-                    setSuggestions(data);
-                } catch (error) {
-                    console.error("Error fetching address suggestions:", error);
-                    setSuggestions([]);
-                } finally {
-                    setIsLoading(false);
-                }
-            } else if (query.length <= 2) {
-                setSuggestions([]);
-            }
+        const timer = setTimeout(() => {
+            setDebouncedQuery(query);
         }, 500); // 500ms debounce
-
         return () => clearTimeout(timer);
-    }, [query, isOpen]);
+    }, [query]);
+
+    const { data: suggestions = [], isLoading } = useQuery({
+        queryKey: ['addressSearch', debouncedQuery],
+        queryFn: async () => {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(debouncedQuery)}&addressdetails=1&limit=5&countrycodes=ve`,
+                {
+                    headers: {
+                        "Accept-Language": "es" // Prefer Spanish results
+                    }
+                }
+            );
+            return response.json();
+        },
+        enabled: debouncedQuery.length > 2 && isOpen, // Only run query if criteria are met
+        staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    });
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
@@ -89,14 +84,12 @@ export default function AddressAutocomplete({ value = "", onChange, onSelectFull
         setQuery(address.display_name);
         onChange(address.display_name);
         if (onSelectFull) onSelectFull(address);
-        setSuggestions([]);
         setIsOpen(false);
     };
 
     const handleClear = () => {
         setQuery("");
         onChange("");
-        setSuggestions([]);
         setIsOpen(false);
     };
 
@@ -137,7 +130,7 @@ export default function AddressAutocomplete({ value = "", onChange, onSelectFull
                         className="absolute z-50 w-full mt-1 bg-white border border-gray-100 rounded-xl shadow-lg max-h-60 overflow-y-auto custom-scrollbar"
                     >
                         <ul className="py-1">
-                            {suggestions.map((item, index) => (
+                            {suggestions.map((item: Address, index: number) => (
                                 <li
                                     key={index}
                                     onClick={() => handleSelect(item)}

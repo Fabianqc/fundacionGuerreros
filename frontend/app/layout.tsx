@@ -20,8 +20,21 @@ export const metadata: Metadata = {
   },
 };
 
+import { Inter, Outfit } from "next/font/google";
 import { Providers } from "./providers";
 import { SessionGuard } from "@/app/components/SessionGuard";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 export default function RootLayout({
   children,
@@ -29,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
-      <body className="antialiased">
+    <html lang="es" className={`${inter.variable} ${outfit.variable}`}>
+      <body className="antialiased font-sans bg-slate-50 text-slate-900">
         <Providers>
           <SessionGuard>
             {children}

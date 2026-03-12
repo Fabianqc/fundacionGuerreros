@@ -13,13 +13,15 @@ import {
     Check,
     Loader2
 } from "lucide-react";
-import { useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 
 
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
 import PathologyModal from "./components/PathologyModal";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
+import Tooltip from "@/app/components/ui/Tooltip";
 
 interface Pathology {
     name: string;
@@ -30,37 +32,49 @@ interface Pathology {
 
 export default function PathologiesPage() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    const [pathologies, setPathologies] = useState<Pathology[]>([]);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPathology, setSelectedPathology] = useState<Pathology | null>(null);
 
-    const { addNotification } = useNotification();
+    const { addNotification } = useNotificationStore();
+    const queryClient = useQueryClient();
+
+    const { data: pathologies = [], isLoading, error: queryError, isError } = useQuery({
+        queryKey: ["pathologies"],
+        queryFn: async () => {
+            const response = await axiosClientInstance.get("/patologia");
+            return response.data.patologias as Pathology[];
+        }
+    });
+
+    const error = isError ? handleAxiosError(queryError) : null;
 
     const filteredPathologies = pathologies.filter(p =>
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const handleCreate = async () => {
-        setIsLoading(true);
-        setError(null);
-        try {
+    const createMutation = useMutation({
+        mutationFn: async (newName: string) => {
             const response = await axiosClientInstance.post("/patologia", {
-                name: searchTerm,
+                name: newName,
                 descripcion: "Nueva patología registrada",
                 riesgo: "Bajo"
             });
-            setPathologies(prev => [response.data, ...prev]);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["pathologies"] });
             setSearchTerm("");
-        } catch (error) {
-            setError(handleAxiosError(error));
-        } finally {
-            setIsLoading(false);
+            addNotification("success", "Patología registrada exitosamente.");
+        },
+        onError: (err) => {
+            addNotification("error", handleAxiosError(err));
         }
+    });
+
+    const handleCreate = () => {
+        createMutation.mutate(searchTerm);
     };
 
     const getRiskColor = (level: string) => {
@@ -71,24 +85,9 @@ export default function PathologiesPage() {
             default: return "text-gray-600 bg-gray-50 border-gray-100";
         }
     };
-    const fetchPathologies = async () => {
-        try {
-            const response = await axiosClientInstance.get("/patologia");
-            setPathologies(response.data.patologias);
-        } catch (error) {
-            setError(handleAxiosError(error));
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        setIsLoading(true);
-        fetchPathologies();
-    }, []); // Empty dependency array to run once on mount
 
     const handleModalSubmit = async (pathologyData: Pathology) => {
-        fetchPathologies();
+        queryClient.invalidateQueries({ queryKey: ["pathologies"] });
     };
 
     return (
@@ -120,11 +119,11 @@ export default function PathologiesPage() {
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 20 }}
-                                    onClick={() => handleCreate()} // Use handleCreate from closure or define it here if needed
-                                    disabled={isLoading}
+                                    onClick={() => handleCreate()}
+                                    disabled={createMutation.isPending}
                                     className="absolute right-2 top-2 bottom-2 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-md transition-all flex items-center gap-2"
                                 >
-                                    {isLoading ? (
+                                    {createMutation.isPending ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                             Creando...
@@ -161,7 +160,10 @@ export default function PathologiesPage() {
                 </div>
 
                 {/* List Content */}
-                <div className="flex-1 overflow-x-auto">
+                {isLoading && pathologies.length === 0 ? (
+                    <TableSkeleton columns={4} />
+                ) : (
+                    <div className="flex-1 overflow-x-auto">
                     {filteredPathologies.length > 0 ? (
                         <table className="w-full">
                             <thead className="bg-gray-50 border-b border-gray-100">
@@ -202,18 +204,22 @@ export default function PathologiesPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
-                                                        onClick={() => {
-                                                            setSelectedPathology(pathology);
-                                                            setIsModalOpen(true);
-                                                        }}
-                                                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                    >
-                                                        <Edit className="w-4 h-4" />
-                                                    </button>
-                                                    <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    <Tooltip content="Editar" position="top">
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedPathology(pathology);
+                                                                setIsModalOpen(true);
+                                                            }}
+                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors active:scale-95"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip content="Eliminar" position="top">
+                                                        <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors active:scale-95">
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
                                                 </div>
                                             </td>
                                         </motion.tr>
@@ -232,7 +238,8 @@ export default function PathologiesPage() {
                             </p>
                         </div>
                     )}
-                </div>
+                    </div>
+                )}
 
                 {/* Footer Info */}
                 <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/30 flex justify-between items-center text-xs text-gray-400">

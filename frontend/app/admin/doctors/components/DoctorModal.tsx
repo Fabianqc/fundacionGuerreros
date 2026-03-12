@@ -7,7 +7,7 @@ import PersonForm from "../../patients/components/PersonForm"; // Reusing Person
 import DoctorForm from "./DoctorForm";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
-import { useNotification } from "@/app/context/NotificationContext";
+import { useNotificationStore } from "@/app/store/useNotificationStore";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import { CreateDoctorInterface } from "@/types/create-doctor.interface";
 
@@ -29,7 +29,7 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
     const [tipoCedula, setTipoCedula] = useState("V");
     const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<any>(null);
-    const { addNotification } = useNotification();
+    const { addNotification } = useNotificationStore();
     const [ isEditing, setIsEditing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // Initial Data Handler (For Editing)
@@ -228,7 +228,6 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                             onSubmit={handleSubmitDoctor}
                                             onCancel={onClose}
                                             initialData={personData} // Pass initial doctor data if editing
-                                            submitLabel={initialData ? "Guardar Cambios" : "Registrar Doctor"}
                                         />
                                     </motion.div>
                                 )}
