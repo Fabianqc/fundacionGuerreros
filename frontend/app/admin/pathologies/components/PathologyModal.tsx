@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Save, AlertCircle } from "lucide-react";
 import { useNotificationStore } from "@/app/store/useNotificationStore";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Pathology {
     name: string;
@@ -22,6 +23,7 @@ interface PathologyModalProps {
 
 export default function PathologyModal({ isOpen, onClose, onSubmit, initialData, existingNames }: PathologyModalProps) {
     const { addNotification } = useNotificationStore();
+    const queryClient = useQueryClient();
     const [formData, setFormData] = useState<Pathology>({
         name: "",
         descripcion: "",
@@ -52,6 +54,25 @@ export default function PathologyModal({ isOpen, onClose, onSubmit, initialData,
         setError(null);
     };
 
+    const saveMutation = useMutation({
+        mutationFn: async (data: Pathology) => {
+            if (isEditing) {
+                return axiosClientInstance.patch(`/patologia/${data.name}`, data);
+            } else {
+                return axiosClientInstance.post("/patologia", data);
+            }
+        },
+        onSuccess: () => {
+            addNotification("success", isEditing ? "Patología actualizada con éxito" : "Patología creada con éxito");
+            queryClient.invalidateQueries({ queryKey: ['pathologies'] });
+            onSubmit(formData);
+            onClose();
+        },
+        onError: () => {
+             addNotification("error", "Error al guardar la patología. Intente nuevamente.");
+        }
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -65,7 +86,7 @@ export default function PathologyModal({ isOpen, onClose, onSubmit, initialData,
         // Duplicate Name Check
         const nameExists = existingNames.some(name =>
             name.toLowerCase() === formData.name.trim().toLowerCase() &&
-            name.toLowerCase() !== initialData?.name.toLowerCase() // Exclude current name if editing
+            name.toLowerCase() !== initialData?.name?.toLowerCase() // Exclude current name if editing
         );
 
         if (nameExists) {
@@ -73,17 +94,8 @@ export default function PathologyModal({ isOpen, onClose, onSubmit, initialData,
             setError(`La patología "${formData.name}" ya existe.`);
             return;
         }
-        if (isEditing ) {
-                // Update existing pathology
-                const response = await axiosClientInstance.patch(`/patologia/${formData.name}`, formData);
-                addNotification("success", "Patología actualizada con éxito");
-            } else {
-                // Create new pathology
-                const response = await axiosClientInstance.post("/patologia", formData);
-                addNotification("success", "Patología creada con éxito");
-            }
-        onSubmit(formData);
-        onClose();
+        
+        saveMutation.mutate(formData);
     };
 
     return (
@@ -178,10 +190,11 @@ export default function PathologyModal({ isOpen, onClose, onSubmit, initialData,
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all font-medium flex items-center gap-2"
+                                        disabled={saveMutation.isPending}
+                                        className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
                                     >
                                         <Save className="w-4 h-4" />
-                                        {initialData ? "Actualizar" : "Guardar"}
+                                        {saveMutation.isPending ? "Guardando..." : initialData ? "Actualizar" : "Guardar"}
                                     </button>
                                 </div>
                             </form>

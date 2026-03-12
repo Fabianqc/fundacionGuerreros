@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Tooltip from "@/app/components/ui/Tooltip";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
 import {
     Search,
     Filter,
@@ -89,6 +91,13 @@ export default function AuditLogsPage() {
     const [selectedAction, setSelectedAction] = useState<string>("TODOS");
     const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
+    // Simulate initial loading for showcase
+    const [isLoading, setIsLoading] = useState(true);
+    useEffect(() => {
+        const timer = setTimeout(() => setIsLoading(false), 800);
+        return () => clearTimeout(timer);
+    }, []);
+
     // Filtering logic
     const filteredLogs = logs.filter(log => {
         const matchesSearch =
@@ -160,73 +169,83 @@ export default function AuditLogsPage() {
 
                 {/* Table */}
                 <div className="flex-1 overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha / Hora</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Acción</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Entidad Afectada</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Detalles</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            <AnimatePresence>
-                                {filteredLogs.map((log) => (
-                                    <motion.tr
-                                        key={log.id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="hover:bg-gray-50/50 transition-colors group"
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                                                <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                                {formatDate(log.timestamp)}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs">
-                                                    {log.user.name.charAt(0)}
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">{log.user.name}</p>
-                                                    <p className="text-xs text-gray-500">{log.user.role}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getActionColor(log.action)}`}>
-                                                {log.action}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2 text-sm text-gray-700">
-                                                <Database className="w-4 h-4 text-gray-400" />
-                                                <span className="font-medium">{log.entity}</span>
-                                                <span className="text-gray-400 text-xs">#{log.entityId}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <button
-                                                onClick={() => setSelectedLog(log)}
-                                                className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 p-2 rounded-lg transition-colors"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </button>
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </AnimatePresence>
-                        </tbody>
-                    </table>
-                    {filteredLogs.length === 0 && (
-                        <div className="p-12 text-center text-gray-500">
-                            <Activity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                            <p>No se encontraron registros de auditoría con los filtros actuales.</p>
+                    {isLoading ? (
+                        <div className="p-4">
+                            <TableSkeleton columns={5} />
                         </div>
+                    ) : (
+                        <>
+                            <table className="w-full">
+                                <thead className="bg-gray-50 border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha / Hora</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Usuario</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Acción</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Entidad Afectada</th>
+                                        <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Detalles</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    <AnimatePresence>
+                                        {filteredLogs.map((log) => (
+                                            <motion.tr
+                                                key={log.id}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                className="hover:bg-gray-50/50 transition-colors group"
+                                            >
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                                        <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                                        {formatDate(log.timestamp)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs">
+                                                            {log.user.name.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900">{log.user.name}</p>
+                                                            <p className="text-xs text-gray-500">{log.user.role}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getActionColor(log.action)}`}>
+                                                        {log.action}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                                                        <Database className="w-4 h-4 text-gray-400" />
+                                                        <span className="font-medium">{log.entity}</span>
+                                                        <span className="text-gray-400 text-xs">#{log.entityId}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                    <Tooltip content="Ver detalle de cambios" position="top">
+                                                        <button
+                                                            onClick={() => setSelectedLog(log)}
+                                                            className="text-purple-600 hover:text-purple-800 hover:bg-purple-50 p-2 rounded-lg transition-colors"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
+                                                </td>
+                                            </motion.tr>
+                                        ))}
+                                    </AnimatePresence>
+                                </tbody>
+                            </table>
+                            {filteredLogs.length === 0 && (
+                                <div className="p-12 text-center text-gray-500">
+                                    <Activity className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p>No se encontraron registros de auditoría con los filtros actuales.</p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>

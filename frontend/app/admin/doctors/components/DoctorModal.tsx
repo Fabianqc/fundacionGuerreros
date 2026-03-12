@@ -10,16 +10,13 @@ import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { useNotificationStore } from "@/app/store/useNotificationStore";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
 import { CreateDoctorInterface } from "@/types/create-doctor.interface";
+import { useQuery } from "@tanstack/react-query";
 
 interface DoctorModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: any) => void;
     initialData?: any;
-}
-
-interface DoctorData {
-
 }
 
 type SearchStatus = "idle" | "searching" | "found" | "not-found";
@@ -56,21 +53,32 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
         }
     }, [initialData, isOpen]);
 
+    const { isFetching: isSearchingPersona, refetch: searchPersona } = useQuery({
+        queryKey: ['persona', tipoCedula, cedula],
+        queryFn: async () => {
+            const { data } = await axiosClientInstance.get(`/personas/${tipoCedula}/${cedula}`);
+            return data;
+        },
+        enabled: false, // Only run on manual trigger
+        retry: false
+    });
+
     const handleSearch = async () => {
         if (!cedula || !tipoCedula) return;
         setSearchStatus("searching");
+        setError(null);
 
         try {
-            const response = await axiosClientInstance.get(`/personas/${tipoCedula}/${cedula}`);
-            if (response.data) {
-                setPersonData(response.data);
+            const result = await searchPersona();
+            if (result.data) {
+                setPersonData(result.data);
                 setSearchStatus("found");
                 setIsEditing(true);
             } else {
                 setSearchStatus("not-found");
             }
-        } catch (error) {
-            const errorMessage = handleAxiosError(error);
+        } catch (err: any) {
+            const errorMessage = handleAxiosError(err);
             setError(errorMessage);
             addNotification("error", errorMessage);
             setPersonData({} as CreatePersonaInterface);
@@ -146,20 +154,20 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                             disabled={searchStatus === "found" || !!initialData}
                                         />
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                            {searchStatus === "searching" && (
+                                            {isSearchingPersona && (
                                                 <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />
                                             )}
-                                            {searchStatus === "found" && (
+                                            {!isSearchingPersona && searchStatus === "found" && (
                                                 <CheckCircle className="w-5 h-5 text-green-500" />
                                             )}
-                                            {searchStatus === "not-found" && (
+                                            {!isSearchingPersona && searchStatus === "not-found" && (
                                                 <AlertCircle className="w-5 h-5 text-orange-500" />
                                             )}
                                         </div>
                                     </div>
                                     <button
                                         onClick={handleSearch}
-                                        disabled={!cedula || searchStatus === "searching" || searchStatus === "found" || !!initialData}
+                                        disabled={!cedula || isSearchingPersona || searchStatus === "found" || !!initialData}
                                         className="px-5 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 font-medium transition-colors flex items-center gap-2"
                                     >
                                         <Search className="w-4 h-4" />

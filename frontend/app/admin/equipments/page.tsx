@@ -22,6 +22,9 @@ import {
 } from "lucide-react";
 import CreateEquipmentModal from "./components/CreateEquipmentModal";
 import AddStockModal from "./components/AddStockModal";
+import Tooltip from "@/app/components/ui/Tooltip";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
+import { useEffect } from "react";
 
 // Types
 interface Equipment {
@@ -112,6 +115,13 @@ export default function EquipmentsPage() {
     const [assignmentDate, setAssignmentDate] = useState(new Date().toISOString().split('T')[0]);
     const [observation, setObservation] = useState("");
     const [isSearching, setIsSearching] = useState(false);
+
+    // Simulate initial loading for showcase
+    const [isLoading, setIsLoading] = useState(true);
+    useEffect(() => {
+        const timer = setTimeout(() => setIsLoading(false), 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     // --- Stats Calculation ---
     const stats = [
@@ -326,88 +336,99 @@ export default function EquipmentsPage() {
 
                 {/* Table */}
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Equipo</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoría</th>
-                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Total</th>
-                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Disponibles</th>
-                                <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            <AnimatePresence>
-                                {filteredEquipment.map((item) => (
-                                    <motion.tr
-                                        key={item.id}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
-                                        className="group"
-                                    >
-                                        <td className="px-6 py-4">
-                                            <div>
-                                                <p className="font-semibold text-gray-900">{item.name}</p>
-                                                <p className="text-xs text-gray-400 font-mono">{item.id}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                                            {item.category}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
-                                            {item.totalStock}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${item.available > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
-                                                {item.available}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(item.status)}`}>
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => openAssignModal(item)}
-                                                    disabled={item.available === 0}
-                                                    className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-lg shadow-sm transition-all ${item.available > 0
-                                                        ? 'bg-green-600 hover:bg-green-700 hover:scale-105'
-                                                        : 'bg-gray-300 cursor-not-allowed'
-                                                        }`}
-                                                >
-                                                    <Accessibility className="w-3.5 h-3.5" />
-                                                    {item.available > 0 ? 'Asignar' : 'Agotado'}
-                                                </button>
-                                                <button
-                                                    onClick={() => openEditModal(item)}
-                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                >
-                                                    <Edit className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => openAddStockModal(item)}
-                                                    className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                                    title="Añadir Stock"
-                                                >
-                                                    <CirclePlus className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteEquipment(item.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </motion.tr>
-                                ))}
-                            </AnimatePresence>
-                        </tbody>
-                    </table>
+                    {isLoading ? (
+                        <div className="p-4">
+                            <TableSkeleton columns={6} />
+                        </div>
+                    ) : (
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Equipo</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Categoría</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock Total</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Disponibles</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                <AnimatePresence>
+                                    {filteredEquipment.map((item) => (
+                                        <motion.tr
+                                            key={item.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
+                                            className="group"
+                                        >
+                                            <td className="px-6 py-4">
+                                                <div>
+                                                    <p className="font-semibold text-gray-900">{item.name}</p>
+                                                    <p className="text-xs text-gray-400 font-mono">{item.id}</p>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                {item.category}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
+                                                {item.totalStock}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm ${item.available > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
+                                                    {item.available}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <span className={`px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(item.status)}`}>
+                                                    {item.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => openAssignModal(item)}
+                                                        disabled={item.available === 0}
+                                                        className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white rounded-lg shadow-sm transition-all ${item.available > 0
+                                                            ? 'bg-green-600 hover:bg-green-700 hover:scale-105'
+                                                            : 'bg-gray-300 cursor-not-allowed'
+                                                            }`}
+                                                    >
+                                                        <Accessibility className="w-3.5 h-3.5" />
+                                                        {item.available > 0 ? 'Asignar' : 'Agotado'}
+                                                    </button>
+                                                    <Tooltip content="Editar equipo" position="top">
+                                                        <button
+                                                            onClick={() => openEditModal(item)}
+                                                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        >
+                                                            <Edit className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip content="Añadir stock" position="top">
+                                                        <button
+                                                            onClick={() => openAddStockModal(item)}
+                                                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                                        >
+                                                            <CirclePlus className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
+                                                    <Tooltip content="Dar de baja" position="top">
+                                                        <button
+                                                            onClick={() => handleDeleteEquipment(item.id)}
+                                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </Tooltip>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                </AnimatePresence>
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
 

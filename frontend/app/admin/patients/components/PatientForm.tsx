@@ -52,21 +52,13 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
     const [isCustomHousing, setIsCustomHousing] = useState(false);
     const [isCustomTenencia, setIsCustomTenencia] = useState(false);
 
-    const { isLoading: isLoadingPatient } = useQuery({
+    const { data: fetchedData, isLoading: isLoadingPatient } = useQuery({
         queryKey: ['patient', initialData?.cedula, initialData?.tipo_cedula],
         queryFn: async () => {
             const response = await axiosClientInstance.get(`/paciente/${initialData.cedula}/${initialData.tipo_cedula}`);
             return response.data;
         },
         enabled: !isNewPatient, // Only fetch if we're editing an existing patient
-    });
-
-    // We use useEffect to populate the form once data arrives from the query.
-    // If we wanted a fully uncontrolled form, we'd use `defaultValues` in react-hook-form, 
-    // but here we maintain the existing controlled state approach.
-    const { data: fetchedData } = useQuery<any>({
-        queryKey: ['patient', initialData?.cedula, initialData?.tipo_cedula],
-        enabled: !isNewPatient
     });
 
     useEffect(() => {

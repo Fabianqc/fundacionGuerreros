@@ -15,6 +15,7 @@ import CreatePatientModal from "./components/CreatePatientModal";
 import { useQuery } from "@tanstack/react-query";
 import { useNotificationStore } from "@/app/store/useNotificationStore";
 import TableSkeleton from "@/app/components/ui/TableSkeleton";
+import Tooltip from "@/app/components/ui/Tooltip";
 import { useState, useEffect } from "react";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { handleAxiosError } from "@/lib/handleAxiosError";
@@ -211,12 +212,14 @@ export default function PatientsPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium relative">
-                                        <button
-                                            onClick={() => setOpenMenuId(openMenuId === patient.cedula ? null : patient.cedula)}
-                                            className="text-gray-400 hover:text-purple-600 transition-colors"
-                                        >
-                                            <MoreVertical className="w-5 h-5" />
-                                        </button>
+                                        <Tooltip content="Opciones" position="top">
+                                            <button
+                                                onClick={() => setOpenMenuId(openMenuId === patient.cedula ? null : patient.cedula)}
+                                                className="text-gray-400 hover:text-purple-600 transition-colors"
+                                            >
+                                                <MoreVertical className="w-5 h-5" />
+                                            </button>
+                                        </Tooltip>
 
                                         {openMenuId === patient.cedula && (
                                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-10 py-1 animate-fadeIn">

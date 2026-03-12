@@ -8,27 +8,19 @@ import { handleAxiosError } from "@/lib/handleAxiosError";
 import { useNotificationStore } from "@/app/store/useNotificationStore";
 import { CreateDoctorInterface } from "@/types/create-doctor.interface";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface DoctorFormProps {
     onSubmit: (data: CreateDoctorInterface) => void;
     onCancel: () => void;
     initialData?: CreatePersonaInterface;
 }
-
-interface DoctorData {
-    licenseNumber: string;
-    status: string;
-    especialidades: string[];
-}
-
 export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFormProps) {
     const [activeSection, setActiveSection] = useState<"info" | "schedule">("info");
-    const [especialidadesList, setEspecialidadesList] = useState<string[]>([]);
     const [currentSpecialty, setCurrentSpecialty] = useState<string>("");
-    const [isEditing, setIsEditing] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const isEditing = !!initialData;
     const { addNotification } = useNotificationStore();
+    const queryClient = useQueryClient();
 
     // Doctor Basic Data
     const [doctorData, setDoctorData] = useState<CreateDoctorInterface>({
@@ -45,31 +37,45 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
         type: 'weekly'
     } as ScheduleData);
 
+    // Fetch Specialties
+    const { data: especialidadesData } = useQuery({
+        queryKey: ['especialidades'],
+        queryFn: async () => {
+            const { data } = await axiosClientInstance.get("/especialidades");
+            return data;
+        }
+    });
+    
+    const especialidadesList = especialidadesData ? especialidadesData.map((e: any) => e.nombre) : [];
+
+    // Fetch Doctor Data if editing
+    const { data: fetchedDoctor, isLoading: isFetchingDoctor } = useQuery({
+        queryKey: ['doctor', initialData?.cedula, initialData?.tipo_cedula],
+        queryFn: async () => {
+            const { data } = await axiosClientInstance.get(`/doctor/${initialData?.tipo_cedula}/${initialData?.cedula}`);
+            return data;
+        },
+        enabled: isEditing
+    });
+
     useEffect(() => {
-        setLoading(true);
-        if (initialData) {
+        if (fetchedDoctor) {
+            setDoctorData(prev => ({
+                ...prev,
+                ci_doctor: initialData?.cedula || "",
+                tipo_cedula: initialData?.tipo_cedula || "",
+                licenseNumber: fetchedDoctor.licenseNumber,
+                status: fetchedDoctor.status,
+                especialidades: fetchedDoctor.doctor_especialidades || []
+            }));
+        } else if (initialData) {
             setDoctorData(prev => ({
                 ...prev,
                 ci_doctor: initialData.cedula,
                 tipo_cedula: initialData.tipo_cedula
             }));
-            axiosClientInstance.get(`/doctor/${initialData.tipo_cedula}/${initialData.cedula}`)
-                .then((response) => {
-
-                    setIsEditing(true);
-                    setLoading(false);
-                    setDoctorData(prev => ({
-                        ...prev,
-                        licenseNumber: response.data.licenseNumber,
-                        status: response.data.status,
-                        especialidades: response.data.doctor_especialidades
-                    }));
-                })
-                .catch((error) => {
-                    setLoading(false);
-                })
         }
-    }, [initialData]);
+    }, [fetchedDoctor, initialData]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -97,65 +103,41 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
         }));
     };
 
+    const saveMutation = useMutation({
+        mutationFn: async (data: CreateDoctorInterface) => {
+            if (isEditing) {
+                return axiosClientInstance.put("/doctor", data);
+            } else {
+                return axiosClientInstance.post("/doctor", data);
+            }
+        },
+        onSuccess: () => {
+            onSubmit({
+                ...doctorData,
+                horarios: []
+            });
+            addNotification("success", isEditing ? "Doctor actualizado exitosamente" : "Doctor guardado exitosamente");
+            queryClient.invalidateQueries({ queryKey: ['doctors'] });
+        },
+        onError: (error) => {
+            addNotification("error", handleAxiosError(error));
+        }
+    });
+
     const handleSubmit = (e: React.FormEvent) => {
-        setLoading(true);
         e.preventDefault();
         ///comprobamos que no esten vacios los campos obligatorios
         if (doctorData.licenseNumber === "" || doctorData.status === "" || doctorData.especialidades.length === 0) {
             addNotification("error", "Todos los campos son obligatorios");
-            setLoading(false);
             return;
         }
         ///hacemos el envio de datos
-        if (isEditing) {
-            axiosClientInstance.put("/doctor", doctorData)
-                .then(() => {
-                    onSubmit({
-                        ...doctorData,
-                        horarios: []
-                        //EL NOMBRE DE LA VARIABLE DE HORARIOS ES scheduleData
-                    });
-                    addNotification("success", "Doctor actualizado exitosamente");
-                    // No hacemos setLoading(false) aquí porque el modal se va a cerrar
-                })
-                .catch((error) => {
-                    addNotification("error", handleAxiosError(error));
-                    setLoading(false); // Solo quitamos el loading si hay error (para que el usuario intente de nuevo)
-                });
-        } else {
-            axiosClientInstance.post("/doctor", doctorData)
-                .then(() => {
-                    onSubmit({
-                        ...doctorData,
-                        horarios: []
-                        //EL NOMBRE DE LA VARIABLE DE HORARIOS ES scheduleData
-                    });
-                    addNotification("success", "Doctor guardado exitosamente");
-                    // No hacemos setLoading(false) aquí porque el modal se va a cerrar
-                })
-                .catch((error) => {
-                    addNotification("error", handleAxiosError(error));
-                    setLoading(false); // Solo quitamos el loading si hay error
-                });
-        }
+        saveMutation.mutate(doctorData);
     };
-
-    const fetchEspecialidades = async () => {
-        try {
-            const response = await axiosClientInstance.get("/especialidades");
-            setEspecialidadesList(response.data.map((especialidad: any) => especialidad.nombre));
-        } catch (error) {
-            handleAxiosError(error);
-        }
-    };
-
-    useEffect(() => {
-        fetchEspecialidades();
-    }, []);
 
     return (
         <>
-            {loading ? (
+            {isFetchingDoctor ? (
                 <div className="mt-10 mb-10 inset-0 bg-white/50 flex items-center justify-center z-50">
                     <Loader2 className="w-8 h-8 text-purple-600 animate-spin" />
                 </div>
@@ -212,7 +194,7 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
                                                 className="w-full px-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white"
                                             >
                                                 <option value="">Seleccionar Especialidad</option>
-                                                {especialidadesList.map((especialidad) => (
+                                                {especialidadesList.map((especialidad: string) => (
                                                     <option key={especialidad} value={especialidad}>
                                                         {especialidad}
                                                     </option>
@@ -320,10 +302,11 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
                                     </button>
                                     <button
                                         type="submit"
-                                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center gap-2"
+                                        disabled={saveMutation.isPending}
+                                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-purple-500/30 transition-all font-medium flex items-center gap-2 disabled:opacity-50"
                                     >
-                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                        {loading ? "Guardando..." : isEditing ? "Actualizar Doctor" : "Registrar Doctor"}
+                                        {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                        {saveMutation.isPending ? "Guardando..." : isEditing ? "Actualizar Doctor" : "Registrar Doctor"}
                                     </button>
                                 </>
                             )}

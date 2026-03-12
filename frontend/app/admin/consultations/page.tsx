@@ -15,7 +15,9 @@ import {
     CalendarClock
 } from "lucide-react";
 import CreateConsultationModal from "./components/CreateConsultationModal";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Tooltip from "@/app/components/ui/Tooltip";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
 
 export default function ConsultationsPage() {
     // Mock Data
@@ -89,6 +91,13 @@ export default function ConsultationsPage() {
 
     // State for Modal
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    
+    // Simulate initial loading for showcase
+    const [isLoading, setIsLoading] = useState(true);
+    useEffect(() => {
+        const timer = setTimeout(() => setIsLoading(false), 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     return (
         <div className="max-w-7xl mx-auto">
@@ -157,78 +166,86 @@ export default function ConsultationsPage() {
             {/* Consultations Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b border-gray-100 opacity-70">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Paciente</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detalles Médicos</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha y Hora</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Doctor</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
-                                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {consultations.map((consultation) => (
-                                <motion.tr
-                                    key={consultation.id}
-                                    initial={{ opacity: 0, y: 5 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
-                                    className="group transition-colors"
-                                >
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
-                                                {consultation.patient.charAt(0)}
+                    {isLoading ? (
+                         <TableSkeleton columns={6} />
+                    ) : (
+                        <table className="w-full">
+                            <thead className="bg-gray-50 border-b border-gray-100 opacity-70">
+                                <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Paciente</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Detalles Médicos</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha y Hora</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Doctor</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {consultations.map((consultation) => (
+                                    <motion.tr
+                                        key={consultation.id}
+                                        initial={{ opacity: 0, y: 5 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        whileHover={{ backgroundColor: "rgba(249, 250, 251, 0.5)" }}
+                                        className="group transition-colors"
+                                    >
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                                                    {consultation.patient.charAt(0)}
+                                                </div>
+                                                <span className="font-semibold text-gray-700">{consultation.patient}</span>
                                             </div>
-                                            <span className="font-semibold text-gray-700">{consultation.patient}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-gray-900">{consultation.reason}</span>
-                                            <span className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                                                <Stethoscope className="w-3 h-3" /> {consultation.specialty}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-gray-900">{consultation.reason}</span>
+                                                <span className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                                                    <Stethoscope className="w-3 h-3" /> {consultation.specialty}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm text-gray-600 space-y-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                                                    {consultation.date}
+                                                </div>
+                                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                                    <Clock className="w-3.5 h-3.5" />
+                                                    {consultation.time}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <div className="text-sm font-medium text-gray-700 bg-gray-50 px-2 py-1 rounded-lg inline-block">
+                                                {consultation.doctor}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium border border-transparent ${getStatusColor(consultation.status)}`}>
+                                                {consultation.status}
                                             </span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-600 space-y-0.5">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                                                {consultation.date}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Tooltip content="Ver expediente" position="top">
+                                                    <button className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
+                                                        <Eye className="w-3.5 h-3.5" /> Ver
+                                                    </button>
+                                                </Tooltip>
+                                                <Tooltip content="Reprogramar cita" position="top">
+                                                    <button className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                                        <CalendarClock className="w-4 h-4" />
+                                                    </button>
+                                                </Tooltip>
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs text-gray-400">
-                                                <Clock className="w-3.5 h-3.5" />
-                                                {consultation.time}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-700 bg-gray-50 px-2 py-1 rounded-lg inline-block">
-                                            {consultation.doctor}
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium border border-transparent ${getStatusColor(consultation.status)}`}>
-                                            {consultation.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-600 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
-                                                <Eye className="w-3.5 h-3.5" /> Ver
-                                            </button>
-                                            <button className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Reprogramar">
-                                                <CalendarClock className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                        </td>
+                                    </motion.tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
 
                 {/* Simple Pagination */}
