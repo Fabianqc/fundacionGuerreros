@@ -6,16 +6,24 @@ import { Paciente } from './entities/paciente.entity';
 import { Consulta } from 'src/consulta/entities/consulta.entity';
 import { AyudasTecnica } from 'src/ayudas-tecnicas/entities/ayudas-tecnica.entity';
 import { NucleoFamiliar } from 'src/nucleo-familiar/entities/nucleo-familiar.entity';
-import { Usuario } from 'src/usuario/entities/usuario.entity';
-import { Persona } from 'src/personas/entities/persona.entity';
+
 import { NucleoFamiliarModule } from 'src/nucleo-familiar/nucleo-familiar.module';
+import { PersonasModule } from 'src/personas/personas.module';
+import { UsuarioModule } from 'src/usuario/usuario.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Paciente, Consulta, AyudasTecnica, NucleoFamiliar, Usuario, Persona]),
-    NucleoFamiliarModule
+    TypeOrmModule.forFeature([
+      Paciente,
+      Consulta,
+      AyudasTecnica,
+      NucleoFamiliar,
+    ]),
+    NucleoFamiliarModule,
+    PersonasModule,
+    UsuarioModule,
   ],
   controllers: [PacienteController],
   providers: [PacienteService],
 })
-export class PacienteModule { }
+export class PacienteModule {}

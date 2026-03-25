@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -23,42 +24,49 @@ import { TipoAyudasModule } from './tipo-ayudas/tipo-ayudas.module';
 import { UsuarioModule } from './usuario/usuario.module';
 
 @Module({
-    imports: [
-        ConfigModule.forRoot({
-            isGlobal: true,
-        }),
-        TypeOrmModule.forRootAsync({
-            imports: [ConfigModule],
-            inject: [ConfigService],
-            useFactory: (configService: ConfigService) => ({
-                type: 'postgres',
-                host: configService.get<string>('DB_HOST'),
-                port: configService.get<number>('DB_PORT', 5432),
-                username: configService.get<string>('DB_USERNAME'),
-                password: configService.get<string>('DB_PASSWORD'),
-                database: configService.get<string>('DB_DATABASE'),
-                schema: configService.get<string>('DB_SCHEMA'),
-                autoLoadEntities: true,
-            }),
-        }),
-        AuditLogModule,
-        AuthModule,
-        AyudasTecnicasModule,
-        ConsultaModule,
-        ConsultaHasPatologiaModule,
-        DoctorModule,
-        DoctorHorarioModule,
-        DoctorHasEspecialidadesModule,
-        EspecialidadesModule,
-        ImgModule,
-        NucleoFamiliarModule,
-        PacienteModule,
-        PatologiaModule,
-        PersonasModule,
-        TipoAyudasModule,
-        UsuarioModule,
-    ],
-    controllers: [AppController],
-    providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: configService.get<string>('DB_HOST'),
+        port: configService.get<number>('DB_PORT', 5432),
+        username: configService.get<string>('DB_USERNAME'),
+        password: configService.get<string>('DB_PASSWORD'),
+        database: configService.get<string>('DB_DATABASE'),
+        schema: configService.get<string>('DB_SCHEMA'),
+        autoLoadEntities: true,
+        synchronize: false,
+      }),
+    }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
+    AuditLogModule,
+    AuthModule,
+    AyudasTecnicasModule,
+    ConsultaModule,
+    ConsultaHasPatologiaModule,
+    DoctorModule,
+    DoctorHorarioModule,
+    DoctorHasEspecialidadesModule,
+    EspecialidadesModule,
+    ImgModule,
+    NucleoFamiliarModule,
+    PacienteModule,
+    PatologiaModule,
+    PersonasModule,
+    TipoAyudasModule,
+    UsuarioModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

@@ -58,28 +58,43 @@ describe('PacienteService', () => {
     it('debería arrojar "BadRequestException" si el usuario no existe', async () => {
       mockPersonaRepository.findOneBy.mockResolvedValue({ id: 'persona-1' });
       mockUsuarioRepository.findOneBy.mockResolvedValue(null);
-      await expect(service.create({ cedula: '123', tipo_cedula: 'V' } as any, mockActiveUser as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(
+          { cedula: '123', tipo_cedula: 'V' } as any,
+          mockActiveUser as any,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('debería arrojar "BadRequestException" si la persona no existe', async () => {
       mockPersonaRepository.findOneBy.mockResolvedValue(null);
       mockUsuarioRepository.findOneBy.mockResolvedValue({ id: 'user-id' });
-      await expect(service.create({ cedula: '123', tipo_cedula: 'V' } as any, mockActiveUser as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(
+          { cedula: '123', tipo_cedula: 'V' } as any,
+          mockActiveUser as any,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('debería asociar persona y usuario, luego guardar el paciente', async () => {
       mockPersonaRepository.findOneBy.mockResolvedValue({ id: 'persona-1' });
       mockUsuarioRepository.findOneBy.mockResolvedValue({ id: 'user-id' });
-      
+
       const mockCreatedPaciente = { id: 'paciente-1' };
       mockPacienteRepository.create.mockReturnValue(mockCreatedPaciente);
       mockPacienteRepository.save.mockResolvedValue(mockCreatedPaciente);
 
-      const result = await service.create({ cedula: '123', tipo_cedula: 'V' } as any, mockActiveUser as any);
-      
+      const result = await service.create(
+        { cedula: '123', tipo_cedula: 'V' } as any,
+        mockActiveUser as any,
+      );
+
       expect(mockPacienteRepository.create).toHaveBeenCalled();
       expect(mockCreatedPaciente['persona']).toBeDefined();
-      expect(mockPacienteRepository.save).toHaveBeenCalledWith(mockCreatedPaciente);
+      expect(mockPacienteRepository.save).toHaveBeenCalledWith(
+        mockCreatedPaciente,
+      );
       expect(result).toEqual(mockCreatedPaciente);
     });
   });
@@ -90,7 +105,7 @@ describe('PacienteService', () => {
       const result = await service.findOneByCedula('123', 'V');
       expect(mockPacienteRepository.findOne).toHaveBeenCalledWith({
         where: { persona: { cedula: '123', tipo_cedula: 'V' } },
-        relations: ['persona']
+        relations: ['persona'],
       });
       expect(result).toEqual({ id: 'paciente-1' });
     });
@@ -100,7 +115,9 @@ describe('PacienteService', () => {
     const mockActiveUser = { sub: 'user-id' };
     it('debería arrojar "BadRequestException" si el paciente no existe', async () => {
       mockPacienteRepository.findOne.mockResolvedValue(null); // findOneByCedula returns null
-      await expect(service.update('123', 'V', {} as any, mockActiveUser as any)).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update('123', 'V', {} as any, mockActiveUser as any),
+      ).rejects.toThrow(BadRequestException);
     });
     // Add additional update tests if necessary
   });
@@ -108,15 +125,23 @@ describe('PacienteService', () => {
   describe('findAllWithLimit', () => {
     it('debería retornar pacientes mapeados con paginación', async () => {
       mockPacienteRepository.find.mockResolvedValue([
-        { persona: { fullname: 'a', cedula: '1', tipo_cedula: 'V', email: 'e', telefono: 't' } }
+        {
+          persona: {
+            fullname: 'a',
+            cedula: '1',
+            tipo_cedula: 'V',
+            email: 'e',
+            telefono: 't',
+          },
+        },
       ]);
       mockPacienteRepository.count.mockResolvedValue(1);
 
       const result = await service.findAllWithLimit(0, 10, '');
-      
+
       expect(result.count).toBe(1);
       expect(result.pages).toBe(1);
-      expect(result.pacientes[0].Fullname).toBe('a');
+      expect(result.pacientes[0].fullname).toBe('a');
       expect(mockPacienteRepository.find).toHaveBeenCalled();
     });
   });

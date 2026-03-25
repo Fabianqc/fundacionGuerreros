@@ -4,91 +4,122 @@ import { CreatePacienteDto } from './dto/create-paciente.dto';
 import { UpdatePacienteDto } from './dto/update-paciente.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Paciente } from './entities/paciente.entity';
-import { Like, ILike, Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import ActiveUserInterface from 'src/common/interfaces/active-user.interface';
-import { Persona } from 'src/personas/entities/persona.entity';
-import { Usuario } from 'src/usuario/entities/usuario.entity';
+
+import { PersonasService } from 'src/personas/personas.service';
+import { UsuarioService } from 'src/usuario/usuario.service';
 import { sendPacientesInterface } from './dto/send-pacientes.interface';
 
 @Injectable()
 export class PacienteService {
-
   constructor(
     @InjectRepository(Paciente)
     private readonly pacienteRepository: Repository<Paciente>,
-    @InjectRepository(Persona)
-    private readonly personaRepository: Repository<Persona>,
-    @InjectRepository(Usuario)
-    private readonly usuarioRepository: Repository<Usuario>,
+    private readonly personaService: PersonasService,
+    private readonly usuarioService: UsuarioService,
     private readonly nucleoFamiliarService: NucleoFamiliarService,
-  ) { }
+  ) {}
 
-  async create(createPacienteDto: CreatePacienteDto, activeUser: ActiveUserInterface) {
-    const persona = await this.personaRepository.findOneBy({
+  async create(
+    createPacienteDto: CreatePacienteDto,
+    activeUser: ActiveUserInterface,
+  ) {
+    const persona = await this.personaService.findByCedula({
       cedula: createPacienteDto.cedula,
-      tipo_cedula: createPacienteDto.tipo_cedula
+      tipo_cedula: createPacienteDto.tipo_cedula,
     });
 
-    const usuario = await this.usuarioRepository.findOneBy({
-      id: activeUser.sub
-    });
+    const usuario = await this.usuarioService.findOne(activeUser.sub);
 
     if (!usuario) {
-      throw new BadRequestException('El usuario no existe. Debe registrarlo primero.');
+      throw new BadRequestException(
+        'El usuario no existe. Debe registrarlo primero.',
+      );
     }
 
     if (!persona) {
-      throw new BadRequestException('La persona no existe. Debe registrarla primero.');
+      throw new BadRequestException(
+        'La persona no existe. Debe registrarla primero.',
+      );
     }
 
-    const { nucleoFamiliar, ...pacienteData } = createPacienteDto;
+    const { nucleoFamiliar: nucleoFamiliarItems, ...pacienteData } =
+      createPacienteDto;
     const paciente = this.pacienteRepository.create(pacienteData);
     paciente.persona = persona;
     paciente.usuario = usuario;
 
     const savedPaciente = await this.pacienteRepository.save(paciente);
-    
-    if (createPacienteDto.nucleoFamiliar && createPacienteDto.nucleoFamiliar.length > 0) {
-      await this.nucleoFamiliarService.registerFamilyMembers(savedPaciente.id.toString(), createPacienteDto.nucleoFamiliar);
+
+    if (nucleoFamiliarItems && nucleoFamiliarItems.length > 0) {
+      await this.nucleoFamiliarService.registerFamilyMembers(
+        savedPaciente.id.toString(),
+        nucleoFamiliarItems,
+      );
     }
-    
+
     return savedPaciente;
   }
 
   async findOneByCedula(cedula: string, tipo_cedula: string) {
     return await this.pacienteRepository.findOne({
       where: { persona: { cedula, tipo_cedula } },
-      relations: ['persona', 'nucleoFamiliar', 'nucleoFamiliar.persona']
+      relations: ['persona', 'nucleoFamiliar', 'nucleoFamiliar.persona'],
     });
   }
 
-  async update(cedula: string, tipo_cedula: string, updatePacienteDto: UpdatePacienteDto, activeUser: ActiveUserInterface) {
+  async update(
+    cedula: string,
+    tipo_cedula: string,
+    updatePacienteDto: UpdatePacienteDto,
+    activeUser: ActiveUserInterface,
+  ) {
     const paciente = await this.findOneByCedula(cedula, tipo_cedula);
     if (!paciente) {
-      throw new BadRequestException('El paciente no existe. Debe registrarlo primero.');
+      throw new BadRequestException(
+        'El paciente no existe. Debe registrarlo primero.',
+      );
     }
-    const usuario = await this.usuarioRepository.findOneBy({
-      id: activeUser.sub
-    });
+    const usuario = await this.usuarioService.findOne(activeUser.sub);
     if (!usuario) {
-      throw new BadRequestException('El usuario no existe. Debe registrarlo primero.');
+      throw new BadRequestException(
+        'El usuario no existe. Debe registrarlo primero.',
+      );
     }
-    const { cedula: _cedula, tipo_cedula: _tipo_cedula, nucleoFamiliar, ...dataToUpdate } = updatePacienteDto;
+    const {
+      cedula: _cedula,
+      tipo_cedula: _tipo_cedula,
+      nucleoFamiliar,
+      ...dataToUpdate
+    } = updatePacienteDto;
+    void _cedula;
+    void _tipo_cedula;
     await this.pacienteRepository.update(paciente.id, dataToUpdate);
 
     if (nucleoFamiliar) {
-      const existingRelations = await this.nucleoFamiliarService.findByPaciente(paciente.id.toString());
-      const incomingIds = nucleoFamiliar.map((nf: any) => nf.personaId);
+      const existingRelations = await this.nucleoFamiliarService.findByPaciente(
+        paciente.id.toString(),
+      );
+      const incomingIds = nucleoFamiliar.map(
+        (nf: { personaId: string }) => nf.personaId,
+      );
 
       // Borrar los que ya no están en la lista
       for (const rel of existingRelations) {
         if (!incomingIds.includes(rel.persona.id)) {
-          await this.nucleoFamiliarService.remove(paciente.id.toString(), rel.persona.id.toString());
+          await this.nucleoFamiliarService.remove(
+            paciente.id.toString(),
+            rel.persona.id.toString(),
+          );
         }
       }
 
       if (nucleoFamiliar.length > 0) {
-        await this.nucleoFamiliarService.registerFamilyMembers(paciente.id.toString(), nucleoFamiliar);
+        await this.nucleoFamiliarService.registerFamilyMembers(
+          paciente.id.toString(),
+          nucleoFamiliar,
+        );
       }
     }
 
@@ -96,22 +127,22 @@ export class PacienteService {
   }
 
   async findAllWithLimit(skip: number, take: number, search: string) {
-
     // Implementar el orden de los últimos vistos de la consulta.
-    const where = search ? [
-      { persona: { fullname: ILike(`%${search}%`) } },
-      { persona: { cedula: ILike(`%${search}%`) } },
-      { persona: { email: ILike(`%${search}%`) } },
-      { persona: { telefono: ILike(`%${search}%`) } },
-    ] : {};
+    const where = search
+      ? [
+          { persona: { fullname: ILike(`%${search}%`) } },
+          { persona: { cedula: ILike(`%${search}%`) } },
+          { persona: { email: ILike(`%${search}%`) } },
+          { persona: { telefono: ILike(`%${search}%`) } },
+        ]
+      : {};
 
-    const data = await this.pacienteRepository.find({
+    const [data, count] = await this.pacienteRepository.findAndCount({
       take,
       relations: ['persona'],
       where,
-      skip
+      skip,
     });
-    const count = await this.pacienteRepository.count({ where });
     const pages = Math.ceil(count / take);
     const pacientes: sendPacientesInterface[] = data.map((data) => {
       return {
@@ -123,8 +154,8 @@ export class PacienteService {
         direccion: data.persona.direccion,
         sexo: data.persona.sexo,
         nacimiento: data.persona.nacimiento,
-        ultimavisita: "",
-        status: "Activo",
+        ultimavisita: '',
+        status: 'Activo',
       };
     });
 

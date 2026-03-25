@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DoctorHasEspecialidade } from './entities/doctor_has_especialidade.entity';
 import { Doctor } from '../doctor/entities/doctor.entity';
 import { Especialidade } from '../especialidades/entities/especialidade.entity';
-import { DataSource, BadRequestException } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 const mockDoctorHasEspecialidadeRepository = {
   find: jest.fn(),
@@ -40,14 +40,22 @@ describe('DoctorHasEspecialidadesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DoctorHasEspecialidadesService,
-        { provide: getRepositoryToken(DoctorHasEspecialidade), useValue: mockDoctorHasEspecialidadeRepository },
+        {
+          provide: getRepositoryToken(DoctorHasEspecialidade),
+          useValue: mockDoctorHasEspecialidadeRepository,
+        },
         { provide: getRepositoryToken(Doctor), useValue: mockDoctorRepository },
-        { provide: getRepositoryToken(Especialidade), useValue: mockEspecialidadRepository },
+        {
+          provide: getRepositoryToken(Especialidade),
+          useValue: mockEspecialidadRepository,
+        },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
-    service = module.get<DoctorHasEspecialidadesService>(DoctorHasEspecialidadesService);
+    service = module.get<DoctorHasEspecialidadesService>(
+      DoctorHasEspecialidadesService,
+    );
   });
 
   afterEach(() => {
@@ -70,8 +78,10 @@ describe('DoctorHasEspecialidadesService', () => {
       mockManager.findOne
         .mockResolvedValueOnce({ id: 'doc-1' }) // Doctor
         .mockResolvedValueOnce(null); // Especialidad
-      
-      await expect(service.create(dto)).rejects.toThrow("Especialidad 'General' no encontrada");
+
+      await expect(service.create(dto)).rejects.toThrow(
+        "Especialidad 'General' no encontrada",
+      );
     });
 
     it('debería guardar la relación si los datos son válidos y no está duplicada', async () => {
@@ -79,8 +89,11 @@ describe('DoctorHasEspecialidadesService', () => {
         .mockResolvedValueOnce({ id: 'doc-1' }) // Doctor
         .mockResolvedValueOnce({ id: 'esp-1', nombre: 'General' }) // Especialidad
         .mockResolvedValueOnce(null); // doctorHasEspecialidadExistente (no duplicada)
-      
-      mockManager.create.mockReturnValue({ doctor: { id: 'doc-1' }, especialidad: { id: 'esp-1' } });
+
+      mockManager.create.mockReturnValue({
+        doctor: { id: 'doc-1' },
+        especialidad: { id: 'esp-1' },
+      });
       mockManager.find.mockResolvedValue([{ id: 'rel-1' }]);
 
       const result = await service.create(dto);

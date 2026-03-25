@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "==========================================="
+echo "🛡️ EJECUTANDO VERIFICACIÓN DE CÓDIGO (PRE-COMMIT) 🛡️"
+echo "==========================================="
+
+echo "📦 Verificando el Backend..."
+cd backend
+npx lint-staged || exit 1
+cd ..
+
+echo "🎨 Verificando el Frontend..."
+cd frontend
+npx lint-staged || exit 1
+cd ..
+
+echo "✅ Verificación exitosa. Completando commit..."
