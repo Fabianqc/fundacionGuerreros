@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { NucleoFamiliarService } from '../nucleo-familiar/nucleo-familiar.service';
 import { CreatePacienteDto } from './dto/create-paciente.dto';
 import { UpdatePacienteDto } from './dto/update-paciente.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,6 +20,7 @@ export class PacienteService {
     private readonly personaRepository: Repository<Persona>,
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
+    private readonly nucleoFamiliarService: NucleoFamiliarService,
   ) { }
 
   async create(createPacienteDto: CreatePacienteDto, activeUser: ActiveUserInterface) {
@@ -39,17 +41,24 @@ export class PacienteService {
       throw new BadRequestException('La persona no existe. Debe registrarla primero.');
     }
 
-    const paciente = this.pacienteRepository.create(createPacienteDto);
+    const { nucleoFamiliar, ...pacienteData } = createPacienteDto;
+    const paciente = this.pacienteRepository.create(pacienteData);
     paciente.persona = persona;
     paciente.usuario = usuario;
 
-    return await this.pacienteRepository.save(paciente);
+    const savedPaciente = await this.pacienteRepository.save(paciente);
+    
+    if (createPacienteDto.nucleoFamiliar && createPacienteDto.nucleoFamiliar.length > 0) {
+      await this.nucleoFamiliarService.registerFamilyMembers(savedPaciente.id.toString(), createPacienteDto.nucleoFamiliar);
+    }
+    
+    return savedPaciente;
   }
 
   async findOneByCedula(cedula: string, tipo_cedula: string) {
     return await this.pacienteRepository.findOne({
       where: { persona: { cedula, tipo_cedula } },
-      relations: ['persona']
+      relations: ['persona', 'nucleoFamiliar', 'nucleoFamiliar.persona']
     });
   }
 
@@ -64,13 +73,31 @@ export class PacienteService {
     if (!usuario) {
       throw new BadRequestException('El usuario no existe. Debe registrarlo primero.');
     }
-    const { cedula: _cedula, tipo_cedula: _tipo_cedula, ...dataToUpdate } = updatePacienteDto;
-    return await this.pacienteRepository.update(paciente.id, dataToUpdate);
+    const { cedula: _cedula, tipo_cedula: _tipo_cedula, nucleoFamiliar, ...dataToUpdate } = updatePacienteDto;
+    await this.pacienteRepository.update(paciente.id, dataToUpdate);
+
+    if (nucleoFamiliar) {
+      const existingRelations = await this.nucleoFamiliarService.findByPaciente(paciente.id.toString());
+      const incomingIds = nucleoFamiliar.map((nf: any) => nf.personaId);
+
+      // Borrar los que ya no están en la lista
+      for (const rel of existingRelations) {
+        if (!incomingIds.includes(rel.persona.id)) {
+          await this.nucleoFamiliarService.remove(paciente.id.toString(), rel.persona.id.toString());
+        }
+      }
+
+      if (nucleoFamiliar.length > 0) {
+        await this.nucleoFamiliarService.registerFamilyMembers(paciente.id.toString(), nucleoFamiliar);
+      }
+    }
+
+    return await this.findOneByCedula(cedula, tipo_cedula);
   }
 
   async findAllWithLimit(skip: number, take: number, search: string) {
 
-    //The order of the last one viewed in the query needs to be implemented.
+    // Implementar el orden de los últimos vistos de la consulta.
     const where = search ? [
       { persona: { fullname: ILike(`%${search}%`) } },
       { persona: { cedula: ILike(`%${search}%`) } },
@@ -88,7 +115,7 @@ export class PacienteService {
     const pages = Math.ceil(count / take);
     const pacientes: sendPacientesInterface[] = data.map((data) => {
       return {
-        Fullname: data.persona.fullname,
+        fullname: data.persona.fullname,
         cedula: data.persona.cedula,
         tipo_cedula: data.persona.tipo_cedula,
         email: data.persona.email,

@@ -20,65 +20,62 @@ import { useNotificationStore } from "@/app/store/useNotificationStore";
 import TableSkeleton from "@/app/components/ui/TableSkeleton";
 import Tooltip from "@/app/components/ui/Tooltip";
 
-// Types
 interface Doctor {
     id: string;
-    fullName: string;
+    fullname: string;
     cedula: string;
     telefono: string;
-    phone: string;
     email: string;
     direccion: string;
     sexo: string;
     nacimiento: any;
-    specialities: string[];
+    especialidades: string[];
     licenseNumber: string;
     tipo_cedula: string;
     status: 'Activo' | 'Inactivo';
 }
 
 export default function DoctorsPage() {
-    // --- State ---
-    const [searchTerm, setSearchTerm] = useState("");
-    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+    // --- Estado ---
+    const [busqueda, setBusqueda] = useState("");
+    const [busquedaDebounce, setBusquedaDebounce] = useState("");
 
-    // Modal State
+    // Estado del Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+    const [editingDoctor, setEditingDoctor] = useState<{ cedula: string; tipo_cedula: string } | null>(null);
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [paginaActual, setPaginaActual] = useState(1);
+    const [filasPorPagina, setFilasPorPagina] = useState(10);
     const { addNotification } = useNotificationStore();
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 500);
+        const timer = setTimeout(() => setBusquedaDebounce(busqueda), 500);
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [busqueda]);
 
-    const { data, isLoading: loading, isFetching } = useQuery({
-        queryKey: ['doctors', currentPage, rowsPerPage, debouncedSearchTerm],
+    const { data, isLoading: cargando, isFetching } = useQuery({
+        queryKey: ['doctors', paginaActual, filasPorPagina, busquedaDebounce],
         queryFn: async () => {
             const response = await axiosClientInstance.get('/doctor', {
                 params: {
-                    skip: (currentPage - 1) * rowsPerPage,
-                    take: rowsPerPage,
-                    search: debouncedSearchTerm
+                    skip: (paginaActual - 1) * filasPorPagina,
+                    take: filasPorPagina,
+                    search: busquedaDebounce
                 }
             });
             
             const mappedDoctors = response.data.doctors.map((doc: any) => ({
                 id: doc.licenseNumber || doc.persona?.cedula || Math.random().toString(),
-                fullName: doc.persona?.fullname || 'Sin Nombre',
+                fullname: doc.persona?.fullname || 'Sin Nombre',
                 cedula: doc.persona?.cedula ? `${doc.persona.cedula}` : "",
                 tipo_cedula: doc.persona?.tipo_cedula || "",
                 telefono: doc.persona?.telefono || "No aplica",
-                phone: doc.persona?.telefono || "No aplica", // Keep for compat if used elsewhere
                 email: doc.persona?.email || "No aplica",
                 direccion: doc.persona?.direccion || "",
                 sexo: doc.persona?.sexo || "",
                 nacimiento: doc.persona?.nacimiento || null,
-                specialities: doc.doctor_especialidades?.map((spec: any) => spec.especialidad.nombre) || [],
+                especialidades: doc.doctor_especialidades?.map((spec: any) => spec.especialidad.nombre) || [],
                 licenseNumber: doc.licenseNumber || "N/A",
                 status: doc.status || "Activo"
             }));
@@ -86,7 +83,7 @@ export default function DoctorsPage() {
             return {
                 doctors: mappedDoctors as Doctor[],
                 totalDoctors: response.data.total as number,
-                totalPages: Math.ceil(response.data.total / rowsPerPage) as number
+                totalPages: Math.ceil(response.data.total / filasPorPagina) as number
             };
         }
     });
@@ -108,7 +105,7 @@ export default function DoctorsPage() {
     };
 
     const handleDeleteDoctor = (id: string) => {
-       addNotification("error", "esta funcion no esta disponible actualmente");
+       addNotification("error", "esta función no está disponible actualmente");
     };
 
     const openCreateModal = () => {
@@ -117,13 +114,13 @@ export default function DoctorsPage() {
     };
 
     const openEditModal = (doctor: Doctor) => {
-        setEditingDoctor(doctor);
+        setEditingDoctor({ cedula: doctor.cedula, tipo_cedula: doctor.tipo_cedula });
         setIsModalOpen(true);
     };
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1);
+        setBusqueda(e.target.value);
+        setPaginaActual(1);
     };
     return (
         <div className="max-w-7xl mx-auto">
@@ -143,19 +140,19 @@ export default function DoctorsPage() {
                 </button>
             </div>
 
-            {/* List */}
-            {loading && doctors.length === 0 ? (
+            {/* Lista */}
+            {cargando && doctors.length === 0 ? (
                 <TableSkeleton columns={5} />
             ) : (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[500px]">
-                {/* Toolbar */}
+                {/* Barra de Herramientas */}
                 <div className="p-6 border-b border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
                     <h2 className="text-lg font-bold text-gray-800">Listado de Especialistas</h2>
                     <div className="relative w-full md:w-80">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                         <input
                             type="text"
-                            value={searchTerm}
+                            value={busqueda}
                             onChange={handleSearchChange}
                             placeholder="Buscar por nombre, cédula..."
                             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all"
@@ -186,7 +183,7 @@ export default function DoctorsPage() {
                                     </td>
                                 </tr>
                             ) : null}
-                            {!loading && (
+                            {!cargando && (
                                 <AnimatePresence>
                                     {doctors.map((doc) => (
                                         <motion.tr
@@ -199,10 +196,10 @@ export default function DoctorsPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center font-bold">
-                                                        {(doc.fullName || "Dr.").charAt(4) || "D"} {/* First letter after "Dr. " approx */}
+                                                        {(doc.fullname || "Dr.").charAt(4) || "D"} 
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-gray-900">{doc.fullName || "Sin Nombre"}</p>
+                                                        <p className="font-semibold text-gray-900">{doc.fullname || "Sin Nombre"}</p>
                                                         <p className="text-xs text-gray-500">{doc.tipo_cedula}-{doc.cedula}</p>
                                                     </div>
                                                 </div>
@@ -210,7 +207,7 @@ export default function DoctorsPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <Stethoscope className="w-4 h-4 text-gray-400" />
-                                                    <span className="text-sm text-gray-700">{doc.specialities?.join(", ")}</span>
+                                                    <span className="text-sm text-gray-700">{doc.especialidades?.join(", ")}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <Award className="w-3 h-3 text-gray-400" />
@@ -270,10 +267,10 @@ export default function DoctorsPage() {
                     <div className="flex items-center gap-2">
                         <span>Mostrar</span>
                         <select
-                            value={rowsPerPage}
+                            value={filasPorPagina}
                             onChange={(e) => {
-                                setRowsPerPage(Number(e.target.value));
-                                setCurrentPage(1);
+                                setFilasPorPagina(Number(e.target.value));
+                                setPaginaActual(1);
                             }}
                             className="bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 p-1.5 focus:outline-none"
                         >
@@ -287,21 +284,21 @@ export default function DoctorsPage() {
 
                     <div className="flex items-center gap-4">
                         <span>
-                            Mostrando {totalDoctors === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1} a {Math.min(currentPage * rowsPerPage, totalDoctors)} de {totalDoctors} resultados
+                            Mostrando {totalDoctors === 0 ? 0 : (paginaActual - 1) * filasPorPagina + 1} a {Math.min(paginaActual * filasPorPagina, totalDoctors)} de {totalDoctors} resultados
                         </span>
                         
                         <div className="flex items-center gap-1">
                             <button
-                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                disabled={currentPage === 1 || loading}
+                                onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+                                disabled={paginaActual === 1 || cargando}
                                 className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 Anterior
                             </button>
-                            <span className="px-2 font-medium">{currentPage} / {totalPages > 0 ? totalPages : 1}</span>
+                            <span className="px-2 font-medium">{paginaActual} / {totalPages > 0 ? totalPages : 1}</span>
                             <button
-                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                disabled={currentPage === totalPages || totalPages === 0 || loading}
+                                onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPages))}
+                                disabled={paginaActual === totalPages || totalPages === 0 || cargando}
                                 className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 Siguiente

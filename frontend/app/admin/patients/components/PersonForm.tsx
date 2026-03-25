@@ -32,7 +32,7 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
 
     const [formData, setFormData] = useState<CreatePersonaInterface>(getInitialFormData(initialData));
 
-    // Sync state when initialData changes (vital for modal reuse)
+    // Sincronizar estado cuando initialData cambia (vital para la reutilización del modal)
     useEffect(() => {
         if (initialData) {
             setFormData(getInitialFormData(initialData));
@@ -73,7 +73,7 @@ export default function PersonForm({ initialData, onSubmit, onCancel }: PersonFo
         };
 
         if (isExisting) {
-            onSubmit(data); // Don't create if it already exists
+            onSubmit(data); // No crear si ya existe
         } else {
             createPersonaMutation.mutate(data);
         }

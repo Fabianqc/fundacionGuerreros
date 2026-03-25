@@ -9,8 +9,9 @@ import { DataSource } from 'typeorm';
 import { DoctorHasEspecialidadesService } from 'src/doctor_has_especialidades/doctor_has_especialidades.service';
 import { Persona } from 'src/personas/entities/persona.entity';
 import { DoctorHasEspecialidadesModule } from 'src/doctor_has_especialidades/doctor_has_especialidades.module';
+import { DoctorHorarioModule } from 'src/doctor-horario/doctor-horario.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([Doctor, DoctorHasEspecialidade, DoctorHorario]), DoctorHasEspecialidadesModule],
+  imports: [TypeOrmModule.forFeature([Doctor]), DoctorHasEspecialidadesModule, DoctorHorarioModule],
   controllers: [DoctorController],
   providers: [DoctorService, Persona],
 })

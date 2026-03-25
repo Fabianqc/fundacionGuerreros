@@ -8,9 +8,13 @@ import { AyudasTecnica } from 'src/ayudas-tecnicas/entities/ayudas-tecnica.entit
 import { NucleoFamiliar } from 'src/nucleo-familiar/entities/nucleo-familiar.entity';
 import { Usuario } from 'src/usuario/entities/usuario.entity';
 import { Persona } from 'src/personas/entities/persona.entity';
+import { NucleoFamiliarModule } from 'src/nucleo-familiar/nucleo-familiar.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Paciente, Consulta, AyudasTecnica, NucleoFamiliar, Usuario, Persona])],
+  imports: [
+    TypeOrmModule.forFeature([Paciente, Consulta, AyudasTecnica, NucleoFamiliar, Usuario, Persona]),
+    NucleoFamiliarModule
+  ],
   controllers: [PacienteController],
   providers: [PacienteService],
 })

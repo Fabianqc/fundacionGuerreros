@@ -68,6 +68,10 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
                 status: fetchedDoctor.status,
                 especialidades: fetchedDoctor.doctor_especialidades || []
             }));
+            // Cargar la configuración de horarios guardada
+            if (fetchedDoctor.horarios) {
+                setScheduleData(fetchedDoctor.horarios);
+            }
         } else if (initialData) {
             setDoctorData(prev => ({
                 ...prev,
@@ -117,7 +121,7 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
             
             onSubmit({
                 ...doctorData,
-                horarios: []
+                horarios: scheduleData as any
             });
             addNotification("success", isEditing ? "Doctor actualizado exitosamente" : "Doctor guardado exitosamente");
         },
@@ -134,7 +138,10 @@ export default function DoctorForm({ onSubmit, onCancel, initialData }: DoctorFo
             return;
         }
         ///hacemos el envio de datos
-        saveMutation.mutate(doctorData);
+        saveMutation.mutate({
+            ...doctorData,
+            horarios: scheduleData as any
+        });
     };
 
     return (

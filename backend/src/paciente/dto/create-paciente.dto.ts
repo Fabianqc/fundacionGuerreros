@@ -82,4 +82,6 @@ export class CreatePacienteDto {
         @IsOptional()
         observaciones: string;
 
+        @IsOptional()
+        nucleoFamiliar?: { personaId: string, parentesco: string }[];
 }

@@ -10,7 +10,6 @@ import { NucleoFamiliar } from "../../nucleo-familiar/entities/nucleo-familiar.e
 export class Persona {
 
     @PrimaryGeneratedColumn('uuid', { name: 'UUID' })
-    @Exclude()
     id: crypto.UUID;
 
     @Column({ name: 'FullName', nullable: false, type: 'varchar', length: 150 })

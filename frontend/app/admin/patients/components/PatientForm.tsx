@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, UserPlus } from "lucide-react";
+import { Save, UserPlus, Trash2 } from "lucide-react";
+import AddFamilyMemberModal from "./AddFamilyMemberModal";
 import AddressAutocomplete from "./AddressAutocomplete";
 import { CreatePacienteInterface } from "@/types/create-paciente.interface";
 import { CreatePersonaInterface } from "@/types/create-persona.Interface";
@@ -22,6 +23,9 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
     const isNewPatient = !initialData?.cedula;
     const queryClient = useQueryClient();
     const { addNotification } = useNotificationStore();
+
+    const [familiares, setFamiliares] = useState<any[]>([]);
+    const [isFamilyModalOpen, setIsFamilyModalOpen] = useState(false);
 
     const [patientData, setPatientData] = useState<CreatePacienteInterface>({
         cedula: initialData?.cedula || "",
@@ -94,6 +98,16 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
             if (!TENENCIA_OPTIONS.includes(fetchedData.tenenciaVivienda) && fetchedData.tenenciaVivienda) {
                  setIsCustomTenencia(true);
             }
+
+            if (fetchedData.nucleoFamiliar) {
+                const mappedFamiliares = fetchedData.nucleoFamiliar.map((rel: any) => ({
+                    id: rel.id, // For deletion
+                    personaId: rel.persona.id || rel.persona.UUID, // Support uppercase or lowercase depending on DB mapping
+                    persona: rel.persona,
+                    parentesco: rel.parentesco
+                }));
+                setFamiliares(mappedFamiliares);
+            }
         }
     }, [fetchedData, setIsCustomHousing, setIsCustomTenencia]);
 
@@ -162,19 +176,39 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        const submissionData = Object.fromEntries(
+        const submissionData: any = Object.fromEntries(
             Object.entries(patientData).map(([key, value]) => {
                 if (value === "") return [key, null];
                 return [key, value];
             })
         );
+        
+        // Enviar todos los familiares para que el backend sincronice (añada nuevos y elimine los que falten)
+        const familiaresAEnviar = familiares.map(f => ({
+            personaId: f.persona.id || f.persona.UUID || f.persona.uuid,
+            parentesco: f.parentesco
+        }));
+
+        submissionData.nucleoFamiliar = familiaresAEnviar;
+
         mutation.mutate(submissionData);
+    };
+
+    const handleAddFamilySuccess = (member: { persona: any, parentesco: string }) => {
+        setFamiliares(prev => [...prev, member]);
+    };
+
+    const handleDeleteFamiliar = (index: number) => {
+        // Al trabajar con un solo endpoint de sincronizacion, simplemente removemos del array.
+        // El backend detectara que ya no esta y lo eliminara de la base de datos al guardar.
+        setFamiliares(prev => prev.filter((_, i) => i !== index));
     };
 
     if (isLoadingPatient) {
         return <div className="p-8 text-center text-gray-500">Cargando datos del paciente...</div>;
     }
     return (
+        <>
         <form onSubmit={handleSubmit} className="bg-white border border-gray-100 rounded-xl p-5 space-y-4 shadow-sm animate-fadeIn">
             <div className="pb-3 border-b border-gray-50 mb-2">
                 <h3 className="font-semibold text-gray-800">Datos Clínicos del Paciente</h3>
@@ -439,17 +473,45 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
                     <h3 className="text-sm font-medium text-gray-700">Núcleo Familiar</h3>
                     <button
                         type="button"
-                        onClick={() => console.log("Agregar familiar clicked")}
+                        onClick={() => setIsFamilyModalOpen(true)}
                         className="text-xs bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-md font-medium flex items-center gap-1 transition-colors"
                     >
                         <UserPlus className="w-3.5 h-3.5" />
                         Agregar Familiar
                     </button>
                 </div>
-                <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 gap-2 bg-gray-50/50">
-                    <UserPlus className="w-8 h-8 opacity-20" />
-                    <span className="text-sm">No hay familiares registrados</span>
-                </div>
+                
+                {familiares.length === 0 ? (
+                    <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 gap-2 bg-gray-50/50">
+                        <UserPlus className="w-8 h-8 opacity-20" />
+                        <span className="text-sm">No hay familiares registrados</span>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {familiares.map((familiar, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-3 border border-gray-100 rounded-lg bg-gray-50">
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-800">
+                                        {familiar.persona.fullname || familiar.persona.FullName || familiar.persona.Fullname || familiar.persona.fullName}
+                                    </p>
+                                    <p className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
+                                        <span>C.I: {familiar.persona.tipo_cedula || familiar.persona.Tipo_Cedula}-{familiar.persona.cedula || familiar.persona.Cedula}</span>
+                                        <span className="w-1 h-1 bg-gray-300 rounded-full" />
+                                        <span className="font-medium text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">{familiar.parentesco}</span>
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteFamiliar(idx)}
+                                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                    title="Eliminar"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="space-y-1">
@@ -485,5 +547,11 @@ export default function PatientForm({ onSubmit, onCancel, initialData }: Patient
                 </button>
             </div>
         </form>
+        <AddFamilyMemberModal
+            isOpen={isFamilyModalOpen}
+            onClose={() => setIsFamilyModalOpen(false)}
+            onSuccess={handleAddFamilySuccess}
+        />
+        </>
     );
 }

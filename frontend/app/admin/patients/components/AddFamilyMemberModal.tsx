@@ -2,144 +2,113 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, CheckCircle, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
-import PersonForm from "../../patients/components/PersonForm";
-import DoctorForm from "./DoctorForm";
+import { X, Search, Loader2, ArrowLeft } from "lucide-react";
+import PersonForm from "./PersonForm";
 import FormStepper from "@/app/components/ui/FormStepper";
-import { handleAxiosError } from "@/lib/handleAxiosError";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
+import { handleAxiosError } from "@/lib/handleAxiosError";
 import { useNotificationStore } from "@/app/store/useNotificationStore";
-import { useQuery } from "@tanstack/react-query";
-import { CreatePersonaInterface } from "@/types/create-persona.Interface";
-import { CreateDoctorInterface } from "@/types/create-doctor.interface";
 
-interface DoctorModalProps {
+interface AddFamilyMemberModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit?: (data: any) => void;
-    initialData?: any;
+    onSuccess: (member: { persona: any, parentesco: string }) => void;
 }
 
-type Step = "search" | "persona" | "specialist";
+type Step = "search" | "persona";
 type SearchStatus = "idle" | "searching" | "found" | "not-found";
 
-const DOCTOR_STEPS = [
+const FAMILY_STEPS = [
     { id: "search", label: "Buscar" },
-    { id: "persona", label: "Persona" },
-    { id: "specialist", label: "Especialista" }
+    { id: "persona", label: "Persona & Parentesco" }
 ];
 
-export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: DoctorModalProps) {
-    const [pasoActual, setPasoActual] = useState<Step>("search");
+const PARENTESCO_OPTIONS = [
+    "PADRE", "MADRE", "HIJO", "HIJA", "ESPOSO", "ESPOSA",
+    "CONCUBINO", "CONCUBINA", "HERMANO", "HERMANA", "ABUELO", "ABUELA",
+    "NIETO", "NIETA", "TIO", "TIA", "SOBRINO", "SOBRINA", "PRIMO", "PRIMA",
+    "SUEGRO", "SUEGRA", "YERNO", "NUERA", "CUÑADO", "CUÑADA", "TUTOR_LEGAL", "OTRO"
+];
+
+export default function AddFamilyMemberModal({ isOpen, onClose, onSuccess }: AddFamilyMemberModalProps) {
+    const [currentStep, setCurrentStep] = useState<Step>("search");
     const [cedula, setCedula] = useState("");
     const [tipoCedula, setTipoCedula] = useState("V");
-    const [estadoBusqueda, setEstadoBusqueda] = useState<SearchStatus>("idle");
+    const [searchStatus, setSearchStatus] = useState<SearchStatus>("idle");
     const [personData, setPersonData] = useState<any>(null);
-    const [buscando, setBuscando] = useState(false);
-    const { addNotification } = useNotificationStore();
+    const [isSearching, setIsSearching] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [parentesco, setParentesco] = useState<string>("");
 
-    // Obtención fresca de datos de persona cuando se edita
-    const { data: fetchedPersona, isLoading: isFetchingPersona } = useQuery({
-        queryKey: ["persona", initialData?.cedula, initialData?.tipo_cedula],
-        queryFn: async () => {
-            const { data } = await axiosClientInstance.get(`/personas/${initialData.tipo_cedula}/${initialData.cedula}`);
-            return data;
-        },
-        enabled: !!(isOpen && initialData?.cedula && initialData?.tipo_cedula),
-    });
+    const { addNotification } = useNotificationStore();
 
-    // Manejador de Datos Iniciales (Para Edición)
     useEffect(() => {
-        if (initialData && isOpen) {
-            setCedula(initialData.cedula);
-            setTipoCedula(initialData.tipo_cedula);
-            setEstadoBusqueda("found");
-            setPasoActual("persona"); 
-
-            if (fetchedPersona) {
-                setPersonData({
-                    ...fetchedPersona,
-                    fullname: fetchedPersona.fullname || "",
-                    telefono: fetchedPersona.telefono || "",
-                    direccion: fetchedPersona.direccion || "",
-                    sexo: fetchedPersona.sexo || "",
-                    nacimiento: fetchedPersona.nacimiento || null,
-                    email: fetchedPersona.email || ""
-                });
-            }
-        } else if (!isOpen) {
-            resetModal();
+        if (!isOpen) {
+            setSearchStatus("idle");
+            setPersonData(null);
+            setCedula("");
+            setTipoCedula("V");
+            setCurrentStep("search");
+            setError(null);
+            setIsSearching(false);
+            setParentesco("");
         }
-    }, [initialData, isOpen, fetchedPersona]);
-
-    const resetModal = () => {
-        setEstadoBusqueda("idle");
-        setPersonData(null);
-        setCedula("");
-        setTipoCedula("V");
-        setPasoActual("search");
-        setError(null);
-        setBuscando(false);
-    };
+    }, [isOpen]);
 
     const handleSearch = async () => {
         if (!cedula || !tipoCedula) return;
-        setBuscando(true);
+        setIsSearching(true);
         setError(null);
-        setEstadoBusqueda("searching");
+        setSearchStatus("searching");
 
         try {
             const { data } = await axiosClientInstance.get(`/personas/${tipoCedula}/${cedula}`);
             if (data) {
                 setPersonData(data);
-                setEstadoBusqueda("found");
-                setPasoActual("persona"); 
+                setSearchStatus("found");
+                setCurrentStep("persona");
             } else {
-                setEstadoBusqueda("not-found");
-                setPasoActual("persona"); 
+                setSearchStatus("not-found");
+                setCurrentStep("persona");
             }
         } catch (err: any) {
             const status = err.response?.status;
             if (status === 400 || status === 404) {
-                setEstadoBusqueda("not-found");
+                setSearchStatus("not-found");
                 setPersonData(null);
-                setPasoActual("persona");
+                setCurrentStep("persona");
             } else {
                 const errorMessage = handleAxiosError(err);
                 setError(errorMessage);
                 addNotification("error", errorMessage);
             }
         } finally {
-            setBuscando(false);
+            setIsSearching(false);
         }
     };
 
     const handleBack = () => {
-        if (pasoActual === "persona") {
-            if (initialData) {
-                onClose(); // No se puede volver a buscar en modo edición
-            } else {
-                setPasoActual("search");
-                setEstadoBusqueda("idle");
-            }
-        } else if (pasoActual === "specialist") {
-            setPasoActual("persona");
+        if (currentStep === "persona") {
+            setCurrentStep("search");
+            setSearchStatus("idle");
         }
     };
 
     const handlePersonSubmit = (data: any) => {
-        setPersonData(data);
-        setEstadoBusqueda("found");
-        setPasoActual("specialist");
-    };
+        if (!parentesco) {
+            addNotification("error", "Debe seleccionar un parentesco");
+            return;
+        }
 
-    const handleSubmitDoctor = (doctorSpecificData: CreateDoctorInterface) => {
-        onSubmit?.(doctorSpecificData);
+        // Si ya existía y solo estamos relacionando, data puede ser el fromData inicial.
+        // Si no, la mutation de PersonForm devuelve los datos guardados de la BD
+        const personToSave = data.id || data.UUID ? data : personData || data;
+        
+        onSuccess({ persona: personToSave, parentesco });
         onClose();
     };
 
-    const currentStepIndex = DOCTOR_STEPS.findIndex(s => s.id === pasoActual);
+    const currentStepIndex = FAMILY_STEPS.findIndex(s => s.id === currentStep);
 
     return (
         <AnimatePresence>
@@ -152,10 +121,10 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                         onClick={(e) => e.stopPropagation()}
                         className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
                     >
-                        {/* Cabecera */}
+                        {/* Header */}
                         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                             <div className="flex items-center gap-3">
-                                {pasoActual !== "search" && (
+                                {currentStep !== "search" && (
                                     <button
                                         onClick={handleBack}
                                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -165,13 +134,12 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                     </button>
                                 )}
                                 <div>
-                                    <h2 className="text-xl font-bold text-gray-900">
-                                        {initialData ? "Editar Doctor" : "Registrar Doctor"}
+                                    <h2 className="text-xl font-bold text-gray-800">
+                                        Agregar Familiar
                                     </h2>
                                     <p className="text-sm text-gray-500">
-                                        {pasoActual === "search" && "Busque una persona por cédula."}
-                                        {pasoActual === "persona" && (estadoBusqueda === "found" ? "Confirme los datos de la persona." : "Registre los datos de la persona.")}
-                                        {pasoActual === "specialist" && "Agregue especialidades y datos del doctor."}
+                                        {currentStep === "search" && "Busque el familiar por cédula."}
+                                        {currentStep === "persona" && "Indique parentesco y confirme datos."}
                                     </p>
                                 </div>
                             </div>
@@ -185,14 +153,14 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
 
                         {/* Stepper */}
                         <div className="px-6 py-2 border-b border-gray-50">
-                            <FormStepper steps={DOCTOR_STEPS} currentStepIndex={currentStepIndex} />
+                            <FormStepper steps={FAMILY_STEPS} currentStepIndex={currentStepIndex} />
                         </div>
 
-                        {/* Contenido */}
+                        {/* Content */}
                         <div className="p-6 overflow-y-auto custom-scrollbar">
                             <AnimatePresence mode="wait">
-                                {/* Paso 1: Búsqueda */}
-                                {pasoActual === "search" && (
+                                {/* Step 1: Search */}
+                                {currentStep === "search" && (
                                     <motion.div
                                         key="search"
                                         initial={{ opacity: 0, x: -20 }}
@@ -214,6 +182,7 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                                     <option value="E">E</option>
                                                     <option value="J">J</option>
                                                     <option value="P">P</option>
+                                                    <option value="G">G</option>
                                                 </select>
                                                 <div className="relative flex-1">
                                                     <input
@@ -226,12 +195,13 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                                         autoFocus
                                                     />
                                                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                                        {buscando && <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />}
+                                                        {isSearching && <Loader2 className="w-5 h-5 text-purple-600 animate-spin" />}
                                                     </div>
                                                 </div>
                                                 <button
+                                                    type="button"
                                                     onClick={handleSearch}
-                                                    disabled={!cedula || buscando}
+                                                    disabled={!cedula || isSearching}
                                                     className="px-6 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 font-medium transition-colors shadow-lg shadow-gray-200"
                                                 >
                                                     Buscar
@@ -242,42 +212,35 @@ export default function DoctorModal({ isOpen, onClose, onSubmit, initialData }: 
                                     </motion.div>
                                 )}
 
-                                {/* Paso 2: Formulario de Persona */}
-                                {pasoActual === "persona" && (
+                                {/* Step 2: Persona Form + Parentesco Dropdown */}
+                                {currentStep === "persona" && (
                                     <motion.div
                                         key="persona"
                                         initial={{ opacity: 0, x: 20 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         exit={{ opacity: 0, x: -20 }}
+                                        className="space-y-6"
                                     >
-                                        {isFetchingPersona ? (
-                                            <div className="flex flex-col items-center justify-center py-20 gap-4">
-                                                <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
-                                                <p className="text-gray-500 animate-pulse">Cargando datos detallados...</p>
-                                            </div>
-                                        ) : (
-                                            <PersonForm
-                                                initialData={personData ? { ...personData, tipoCedula: personData.tipo_cedula || tipoCedula } : { cedula, tipoCedula }}
-                                                onSubmit={handlePersonSubmit}
-                                                onCancel={onClose}
-                                            />
-                                        )}
-                                    </motion.div>
-                                )}
-
-                                {/* Paso 3: Formulario de Doctor */}
-                                {pasoActual === "specialist" && (
-                                    <motion.div
-                                        key="specialist"
-                                        initial={{ opacity: 0, x: 20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        className="space-y-4"
-                                    >
-                                        <DoctorForm
-                                            onSubmit={handleSubmitDoctor}
+                                        <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                                            <label className="text-sm font-semibold text-indigo-900 block mb-2">
+                                                ¿Qué parentesco tiene esta persona con el paciente?
+                                            </label>
+                                            <select
+                                                value={parentesco}
+                                                onChange={(e) => setParentesco(e.target.value)}
+                                                className="w-full px-4 py-2 border border-indigo-200 rounded-lg text-gray-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                                            >
+                                                <option value="">Seleccione un parentesco</option>
+                                                {PARENTESCO_OPTIONS.map(opt => (
+                                                    <option key={opt} value={opt}>{opt}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        
+                                        <PersonForm
+                                            initialData={personData ? { ...personData, tipoCedula: personData.tipo_cedula || tipoCedula } : { cedula, tipoCedula: tipoCedula }}
+                                            onSubmit={handlePersonSubmit}
                                             onCancel={onClose}
-                                            initialData={personData}
                                         />
                                     </motion.div>
                                 )}

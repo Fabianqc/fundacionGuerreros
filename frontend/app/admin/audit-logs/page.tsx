@@ -18,97 +18,96 @@ import {
     Activity
 } from "lucide-react";
 
-// Mock Data Interfaces
 interface AuditLog {
     id: string;
-    action: 'CREAR' | 'ACTUALIZAR' | 'ELIMINAR';
-    entity: string; // TablaAfectada
-    entityId: string;
-    user: {
+    accion: 'CREAR' | 'ACTUALIZAR' | 'ELIMINAR';
+    entidad: string; // TablaAfectada
+    entidadId: string;
+    usuario: {
         name: string;
         role: string;
         avatar?: string;
     };
-    timestamp: string;
-    oldData?: any;
-    newData?: any;
+    fecha: string;
+    datosAnteriores?: any;
+    datosNuevos?: any;
 }
 
 // Mock Data
 const MOCK_LOGS: AuditLog[] = [
     {
         id: "log-001",
-        action: "ACTUALIZAR",
-        entity: "Pacientes",
-        entityId: "1",
-        user: { name: "Admin Principal", role: "Administrador" },
-        timestamp: "2023-10-27T10:30:00",
-        oldData: { nombre: "Juan", apellido: "Perez", estado: "Activo" },
-        newData: { nombre: "Juan", apellido: "Perez", estado: "Inactivo" }
+        accion: "ACTUALIZAR",
+        entidad: "Pacientes",
+        entidadId: "1",
+        usuario: { name: "Admin Principal", role: "Administrador" },
+        fecha: "2023-10-27T10:30:00",
+        datosAnteriores: { nombre: "Juan", apellido: "Perez", estado: "Activo" },
+        datosNuevos: { nombre: "Juan", apellido: "Perez", estado: "Inactivo" }
     },
     {
         id: "log-002",
-        action: "CREAR",
-        entity: "Consultas",
-        entityId: "101",
-        user: { name: "Dr. Roberto", role: "Doctor" },
-        timestamp: "2023-10-27T09:15:00",
-        newData: { pacienteId: "1", motivo: "Dolor de cabeza", diagnostico: "Migraña" }
+        accion: "CREAR",
+        entidad: "Consultas",
+        entidadId: "101",
+        usuario: { name: "Dr. Roberto", role: "Doctor" },
+        fecha: "2023-10-27T09:15:00",
+        datosNuevos: { pacienteId: "1", motivo: "Dolor de cabeza", diagnostico: "Migraña" }
     },
     {
         id: "log-003",
-        action: "ELIMINAR",
-        entity: "Citas",
-        entityId: "55",
-        user: { name: "Maria Recepción", role: "Secretaria" },
-        timestamp: "2023-10-26T16:45:00",
-        oldData: { fecha: "2023-10-30", paciente: "Ana Lopez" }
+        accion: "ELIMINAR",
+        entidad: "Citas",
+        entidadId: "55",
+        usuario: { name: "Maria Recepción", role: "Secretaria" },
+        fecha: "2023-10-26T16:45:00",
+        datosAnteriores: { fecha: "2023-10-30", paciente: "Ana Lopez" }
     },
     {
         id: "log-004",
-        action: "ACTUALIZAR",
-        entity: "Inventario",
-        entityId: "ITEM-202",
-        user: { name: "Admin Principal", role: "Administrador" },
-        timestamp: "2023-10-26T14:20:00",
-        oldData: { stock: 50 },
-        newData: { stock: 100 }
+        accion: "ACTUALIZAR",
+        entidad: "Inventario",
+        entidadId: "ITEM-202",
+        usuario: { name: "Admin Principal", role: "Administrador" },
+        fecha: "2023-10-26T14:20:00",
+        datosAnteriores: { stock: 50 },
+        datosNuevos: { stock: 100 }
     },
     {
         id: "log-005",
-        action: "CREAR",
-        entity: "Pacientes",
-        entityId: "2",
-        user: { name: "Maria Recepción", role: "Secretaria" },
-        timestamp: "2023-10-26T11:00:00",
-        newData: { nombre: "Carlos", apellido: "Ruiz", cedula: "V-12345678" }
+        accion: "CREAR",
+        entidad: "Pacientes",
+        entidadId: "2",
+        usuario: { name: "Maria Recepción", role: "Secretaria" },
+        fecha: "2023-10-26T11:00:00",
+        datosNuevos: { nombre: "Carlos", apellido: "Ruiz", cedula: "V-12345678" }
     }
 ];
 
 export default function AuditLogsPage() {
     const [logs, setLogs] = useState<AuditLog[]>(MOCK_LOGS);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedAction, setSelectedAction] = useState<string>("TODOS");
+    const [busqueda, setBusqueda] = useState("");
+    const [accionSeleccionada, setAccionSeleccionada] = useState<string>("TODOS");
     const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
-    // Simulate initial loading for showcase
-    const [isLoading, setIsLoading] = useState(true);
+    // Simular carga inicial para demostración
+    const [cargando, setCargando] = useState(true);
     useEffect(() => {
-        const timer = setTimeout(() => setIsLoading(false), 800);
+        const timer = setTimeout(() => setCargando(false), 800);
         return () => clearTimeout(timer);
     }, []);
 
-    // Filtering logic
+    // Lógica de filtrado
     const filteredLogs = logs.filter(log => {
         const matchesSearch =
-            log.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            log.entity.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesAction = selectedAction === "TODOS" || log.action === selectedAction;
+            log.usuario.name.toLowerCase().includes(busqueda.toLowerCase()) ||
+            log.entidad.toLowerCase().includes(busqueda.toLowerCase());
+        const matchesAction = accionSeleccionada === "TODOS" || log.accion === accionSeleccionada;
         return matchesSearch && matchesAction;
     });
 
-    const getActionColor = (action: string) => {
-        switch (action) {
+    const getActionColor = (accion: string) => {
+        switch (accion) {
             case "CREAR": return "text-green-600 bg-green-50 border-green-100";
             case "ACTUALIZAR": return "text-blue-600 bg-blue-50 border-blue-100";
             case "ELIMINAR": return "text-red-600 bg-red-50 border-red-100";
@@ -133,7 +132,7 @@ export default function AuditLogsPage() {
 
             {/* Main Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[600px]">
-                {/* Toolbar */}
+                {/* Barra de Herramientas */}
                 <div className="p-5 border-b border-gray-100 bg-gray-50/30 flex flex-col md:flex-row gap-4 justify-between items-center">
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <div className="relative w-full md:w-80">
@@ -141,16 +140,16 @@ export default function AuditLogsPage() {
                             <input
                                 type="text"
                                 placeholder="Buscar por usuario o entidad..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                value={busqueda}
+                                onChange={(e) => setBusqueda(e.target.value)}
                                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
                             />
                         </div>
                         <div className="flex items-center gap-2">
                             <Filter className="w-4 h-4 text-gray-400" />
                             <select
-                                value={selectedAction}
-                                onChange={(e) => setSelectedAction(e.target.value)}
+                                value={accionSeleccionada}
+                                onChange={(e) => setAccionSeleccionada(e.target.value)}
                                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white"
                             >
                                 <option value="TODOS">Todas las Acciones</option>
@@ -169,7 +168,7 @@ export default function AuditLogsPage() {
 
                 {/* Table */}
                 <div className="flex-1 overflow-x-auto">
-                    {isLoading ? (
+                    {cargando ? (
                         <div className="p-4">
                             <TableSkeleton columns={5} />
                         </div>
@@ -198,30 +197,30 @@ export default function AuditLogsPage() {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                                         <Clock className="w-3.5 h-3.5 text-gray-400" />
-                                                        {formatDate(log.timestamp)}
+                                                        {formatDate(log.fecha)}
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-700 font-bold text-xs">
-                                                            {log.user.name.charAt(0)}
+                                                            {log.usuario.name.charAt(0)}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-medium text-gray-900">{log.user.name}</p>
-                                                            <p className="text-xs text-gray-500">{log.user.role}</p>
+                                                            <p className="text-sm font-medium text-gray-900">{log.usuario.name}</p>
+                                                            <p className="text-xs text-gray-500">{log.usuario.role}</p>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getActionColor(log.action)}`}>
-                                                        {log.action}
+                                                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${getActionColor(log.accion)}`}>
+                                                        {log.accion}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center gap-2 text-sm text-gray-700">
                                                         <Database className="w-4 h-4 text-gray-400" />
-                                                        <span className="font-medium">{log.entity}</span>
-                                                        <span className="text-gray-400 text-xs">#{log.entityId}</span>
+                                                        <span className="font-medium">{log.entidad}</span>
+                                                        <span className="text-gray-400 text-xs">#{log.entidadId}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right">
@@ -261,11 +260,11 @@ export default function AuditLogsPage() {
                             onClick={(e) => e.stopPropagation()}
                             className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
                         >
-                            {/* Modal Header */}
+                            {/* Cabecera del Modal */}
                             <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${selectedLog.action === 'CREAR' ? 'bg-green-100 text-green-700' :
-                                        selectedLog.action === 'ACTUALIZAR' ? 'bg-blue-100 text-blue-700' :
+                                    <div className={`p-2 rounded-lg ${selectedLog.accion === 'CREAR' ? 'bg-green-100 text-green-700' :
+                                        selectedLog.accion === 'ACTUALIZAR' ? 'bg-blue-100 text-blue-700' :
                                             'bg-red-100 text-red-700'
                                         }`}>
                                         <Code className="w-5 h-5" />
@@ -273,9 +272,9 @@ export default function AuditLogsPage() {
                                     <div>
                                         <h3 className="text-lg font-bold text-gray-900">Detalle de Cambios</h3>
                                         <p className="text-sm text-gray-500 flex items-center gap-2">
-                                            <span className="font-medium">{selectedLog.action}</span> en
-                                            <span className="font-medium text-gray-700">{selectedLog.entity}</span>
-                                            <span className="text-gray-400">#{selectedLog.entityId}</span>
+                                            <span className="font-medium">{selectedLog.accion}</span> en
+                                            <span className="font-medium text-gray-700">{selectedLog.entidad}</span>
+                                            <span className="text-gray-400">#{selectedLog.entidadId}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -284,7 +283,7 @@ export default function AuditLogsPage() {
                                 </button>
                             </div>
 
-                            {/* Modal Content - JSON Viewer */}
+                            {/* Contenido del Modal - Visor JSON */}
                             <div className="flex-1 overflow-y-auto p-6 bg-gray-50/30">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Old Data */}
@@ -294,8 +293,8 @@ export default function AuditLogsPage() {
                                             Valor Anterior
                                         </h4>
                                         <div className="bg-red-50/50 border border-red-100 rounded-xl p-4 font-mono text-xs text-gray-700 overflow-x-auto">
-                                            {selectedLog.oldData ? (
-                                                <pre>{JSON.stringify(selectedLog.oldData, null, 2)}</pre>
+                                            {selectedLog.datosAnteriores ? (
+                                                <pre>{JSON.stringify(selectedLog.datosAnteriores, null, 2)}</pre>
                                             ) : (
                                                 <span className="text-gray-400 italic">-- Sin datos previos (Creación) --</span>
                                             )}
@@ -307,15 +306,15 @@ export default function AuditLogsPage() {
                                         <ArrowRight className="w-6 h-6" />
                                     </div>
 
-                                    {/* New Data */}
+                                    {/* Valor Nuevo */}
                                     <div className="space-y-2">
                                         <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                             <span className="w-2 h-2 rounded-full bg-green-400" />
                                             Valor Nuevo
                                         </h4>
                                         <div className="bg-green-50/50 border border-green-100 rounded-xl p-4 font-mono text-xs text-gray-700 overflow-x-auto">
-                                            {selectedLog.newData ? (
-                                                <pre>{JSON.stringify(selectedLog.newData, null, 2)}</pre>
+                                            {selectedLog.datosNuevos ? (
+                                                <pre>{JSON.stringify(selectedLog.datosNuevos, null, 2)}</pre>
                                             ) : (
                                                 <span className="text-gray-400 italic">-- Sin datos nuevos (Eliminación) --</span>
                                             )}
@@ -325,11 +324,11 @@ export default function AuditLogsPage() {
                                 <div className="mt-6 flex items-center justify-between text-xs text-gray-400 p-4 border-t border-gray-100">
                                     <div className="flex items-center gap-2">
                                         <User className="w-3 h-3" />
-                                        <span>Realizado por: <strong className="text-gray-600">{selectedLog.user.name}</strong></span>
+                                        <span>Realizado por: <strong className="text-gray-600">{selectedLog.usuario.name}</strong></span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Clock className="w-3 h-3" />
-                                        <span>{formatDate(selectedLog.timestamp)}</span>
+                                        <span>{formatDate(selectedLog.fecha)}</span>
                                     </div>
                                 </div>
                             </div>

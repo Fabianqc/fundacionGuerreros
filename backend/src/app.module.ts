@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+
 import { AuditLogModule } from './audit-log/audit-log.module';
+import { AuthModule } from './auth/auth.module';
 import { AyudasTecnicasModule } from './ayudas-tecnicas/ayudas-tecnicas.module';
 import { ConsultaModule } from './consulta/consulta.module';
 import { ConsultaHasPatologiaModule } from './consulta_has_patologia/consulta_has_patologia.module';
@@ -18,19 +21,44 @@ import { PatologiaModule } from './patologia/patologia.module';
 import { PersonasModule } from './personas/personas.module';
 import { TipoAyudasModule } from './tipo-ayudas/tipo-ayudas.module';
 import { UsuarioModule } from './usuario/usuario.module';
-import { AuthModule } from './auth/auth.module';
+
 @Module({
-  imports: [ConfigModule.forRoot(), TypeOrmModule.forRoot({
-    type: 'postgres',
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 5432,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    schema: 'Fundacion',
-    autoLoadEntities: true,
-  }), AuditLogModule, AuthModule, AyudasTecnicasModule, ConsultaModule, ConsultaHasPatologiaModule, DoctorModule, DoctorHorarioModule, DoctorHasEspecialidadesModule, EspecialidadesModule, ImgModule, NucleoFamiliarModule, PacienteModule, PatologiaModule, PersonasModule, TipoAyudasModule, UsuarioModule],
-  controllers: [AppController],
-  providers: [AppService],
+    imports: [
+        ConfigModule.forRoot({
+            isGlobal: true,
+        }),
+        TypeOrmModule.forRootAsync({
+            imports: [ConfigModule],
+            inject: [ConfigService],
+            useFactory: (configService: ConfigService) => ({
+                type: 'postgres',
+                host: configService.get<string>('DB_HOST'),
+                port: configService.get<number>('DB_PORT', 5432),
+                username: configService.get<string>('DB_USERNAME'),
+                password: configService.get<string>('DB_PASSWORD'),
+                database: configService.get<string>('DB_DATABASE'),
+                schema: configService.get<string>('DB_SCHEMA'),
+                autoLoadEntities: true,
+            }),
+        }),
+        AuditLogModule,
+        AuthModule,
+        AyudasTecnicasModule,
+        ConsultaModule,
+        ConsultaHasPatologiaModule,
+        DoctorModule,
+        DoctorHorarioModule,
+        DoctorHasEspecialidadesModule,
+        EspecialidadesModule,
+        ImgModule,
+        NucleoFamiliarModule,
+        PacienteModule,
+        PatologiaModule,
+        PersonasModule,
+        TipoAyudasModule,
+        UsuarioModule,
+    ],
+    controllers: [AppController],
+    providers: [AppService],
 })
 export class AppModule { }

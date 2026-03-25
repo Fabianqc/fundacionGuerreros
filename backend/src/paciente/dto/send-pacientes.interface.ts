@@ -1,6 +1,6 @@
 
 export interface sendPacientesInterface {
-    Fullname: string;
+    fullname: string;
     cedula: string;
     tipo_cedula: string;
     email: string;

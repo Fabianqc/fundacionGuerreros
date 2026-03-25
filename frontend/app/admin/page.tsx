@@ -17,6 +17,7 @@ import {
 
 import { useState } from "react";
 import CreateConsultationModal from "./consultations/components/CreateConsultationModal";
+import CreateDoctorModal from "./doctors/components/DoctorModal";
 
 export default function AdminDashboard() {
     // Mock Data for Charts/Stats
@@ -24,6 +25,7 @@ export default function AdminDashboard() {
 
     // State for Quick Actions
     const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
+    const [isDoctorModalOpen, setIsDoctorModalOpen] = useState(false);
 
     // Quick Actions Configuration
     const actions = [
@@ -36,7 +38,12 @@ export default function AdminDashboard() {
         },
         { title: "Administrar Patologías", icon: Activity, color: "bg-purple-500", href: "/admin/pathologies" },
         { title: "Añadir Ayudas Técnicas", icon: Accessibility, color: "bg-teal-500", href: "/admin/equipments/new" },
-        { title: "Añadir Doctor", icon: ShieldPlus, color: "bg-indigo-500", href: "/admin/doctors/new" },
+        { title: "Añadir Doctor",
+            icon: ShieldPlus,
+            color: "bg-indigo-500",
+            href: "#",
+            onClick: () => setIsDoctorModalOpen(true)
+        },
         { title: "Añadir Usuarios", icon: UserPlus, color: "bg-pink-500", href: "/admin/users/new" },
         { title: "Reportes Detallados", icon: FileText, color: "bg-orange-500", href: "/admin/reports" },
     ];
@@ -54,6 +61,11 @@ export default function AdminDashboard() {
             <CreateConsultationModal
                 isOpen={isConsultationModalOpen}
                 onClose={() => setIsConsultationModalOpen(false)}
+            />
+            
+            <CreateDoctorModal
+                isOpen={isDoctorModalOpen}
+                onClose={() => setIsDoctorModalOpen(false)}
             />
 
             {/* Header Greeting */}

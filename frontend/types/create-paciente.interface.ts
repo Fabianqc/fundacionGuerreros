@@ -19,4 +19,5 @@ export interface CreatePacienteInterface {
         salaComedor: boolean;
         tenenciaVivienda: string;
         observaciones: string;
+        nucleoFamiliar?: { personaId: string; parentesco: string }[];
 }

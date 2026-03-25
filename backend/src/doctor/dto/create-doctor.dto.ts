@@ -1,5 +1,7 @@
-import { IsString, IsNotEmpty, IsUUID, IsEnum, IsArray } from "class-validator";
+import { IsString, IsNotEmpty, IsUUID, IsEnum, IsArray, IsObject, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
 import { DoctorStatus } from "../entities/doctor.entity";
+import { CreateDoctorHorarioDto } from "../../doctor-horario/dto/create-doctor-horario.dto";
 
 export class CreateDoctorDto {
 
@@ -18,6 +20,8 @@ export class CreateDoctorDto {
     @IsArray()
     especialidades: string[];
 
-    @IsArray()
-    horarios: string[];
+    @IsObject()
+    @ValidateNested()
+    @Type(() => CreateDoctorHorarioDto)
+    horarios: CreateDoctorHorarioDto;
 }

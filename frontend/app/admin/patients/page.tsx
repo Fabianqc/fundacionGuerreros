@@ -20,7 +20,7 @@ import { useState, useEffect } from "react";
 import axiosClientInstance from "@/lib/AxiosClientInstance";
 import { handleAxiosError } from "@/lib/handleAxiosError";
 interface Patient {
-    Fullname: string;
+    fullname: string;
     tipo_cedula: string;
     cedula: string;
     email: string;
@@ -32,36 +32,36 @@ interface Patient {
     status: string;
 }
 export default function PatientsPage() {
-    const [page, setPage] = useState(1);
-    const [take, setTake] = useState(10);
-    const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [pagina, setPagina] = useState(1);
+    const [limite, setLimite] = useState(10);
+    const [busqueda, setBusqueda] = useState("");
+    const [busquedaDebounce, setBusquedaDebounce] = useState("");
 
-    // State for Modal
+    // Estado para el Modal
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-    // Debounce search
+    // Debounce de búsqueda
     useEffect(() => {
         const timer = setTimeout(() => {
-            setDebouncedSearch(search);
-            setPage(1); // Reset page on new search
+            setBusquedaDebounce(busqueda);
+            setPagina(1); // Resetear página en nueva búsqueda
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [search]);
+    }, [busqueda]);
 
-    const skip = (page - 1) * take;
+    const skip = (pagina - 1) * limite;
 
-    const { data, isLoading: loading, isFetching, isError, error: queryError, refetch } = useQuery({
-        queryKey: ["patients", skip, take, debouncedSearch],
+    const { data, isLoading: cargando, isFetching, isError, error: queryError, refetch } = useQuery({
+        queryKey: ["patients", skip, limite, busquedaDebounce],
         queryFn: async () => {
             const response = await axiosClientInstance.get(`/paciente`, {
                 params: {
-                    search: debouncedSearch,
+                    search: busquedaDebounce,
                     skip,
-                    take,
+                    take: limite,
                 }
             });
             const mappedPatients = response.data.pacientes.map((p: any) => {
@@ -69,7 +69,6 @@ export default function PatientsPage() {
                 return {
                     ...p,
                     ...persona, // Spread persona to ensure we have all fields even if nested
-                    Fullname: persona.Fullname || persona.fullname || p.Fullname || p.fullname || "Sin Nombre",
                     fullname: persona.fullname || persona.Fullname || p.fullname || p.Fullname || "Sin Nombre",
                     telefono: persona.telefono || persona.Telefono || p.telefono || p.phone || "",
                     direccion: persona.direccion || persona.Direccion || p.direccion || "",
@@ -101,14 +100,14 @@ export default function PatientsPage() {
     };
 
     const handleNextPage = () => {
-        if (page < totalPages) {
-            setPage(prev => prev + 1);
+        if (pagina < totalPages) {
+            setPagina(prev => prev + 1);
         }
     };
 
     const handlePreviousPage = () => {
-        if (page > 1) {
-            setPage(prev => prev - 1);
+        if (pagina > 1) {
+            setPagina(prev => prev - 1);
         }
     };
 
@@ -150,14 +149,14 @@ export default function PatientsPage() {
 
             {/* Content Card */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {/* Search Bar */}
+                {/* Barra de Búsqueda */}
                 <div className="p-4 border-b border-gray-50">
                     <div className="relative max-w-md">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
                             placeholder="Buscar paciente por nombre, cédula..."
                             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition-all"
                         />
@@ -175,7 +174,7 @@ export default function PatientsPage() {
                             />
                         </div>
                     )}
-                    {loading && patients.length === 0 ? (
+                    {cargando && patients.length === 0 ? (
                         <TableSkeleton columns={6} />
                     ) : (
                         <>
@@ -208,10 +207,10 @@ export default function PatientsPage() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-lg">
-                                                {userInitial(patient.Fullname)}
+                                                {userInitial(patient.fullname)}
                                             </div>
                                             <div>
-                                                <p className="font-semibold text-gray-900">{patient.Fullname}</p>
+                                                <p className="font-semibold text-gray-900">{patient.fullname}</p>
                                             </div>
                                         </div>
                                     </td>
@@ -276,13 +275,13 @@ export default function PatientsPage() {
                 <div className="px-6 py-4 border-t border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <p className="text-sm text-gray-500">
-                            Mostrando <span className="font-medium text-gray-900">{Math.min(skip + 1, totalItems)}</span> a <span className="font-medium text-gray-900">{Math.min(skip + take, totalItems)}</span> de <span className="font-medium text-gray-900">{totalItems}</span> resultados
+                            Mostrando <span className="font-medium text-gray-900">{Math.min(skip + 1, totalItems)}</span> a <span className="font-medium text-gray-900">{Math.min(skip + limite, totalItems)}</span> de <span className="font-medium text-gray-900">{totalItems}</span> resultados
                         </p>
                         <select
-                            value={take}
+                            value={limite}
                             onChange={(e) => {
-                                setTake(Number(e.target.value));
-                                setPage(1);
+                                setLimite(Number(e.target.value));
+                                setPagina(1);
                             }}
                             className="text-sm border border-gray-200 rounded-lg py-1 px-2 focus:outline-none focus:border-purple-500 text-gray-900"
                         >
@@ -295,14 +294,14 @@ export default function PatientsPage() {
                     <div className="flex gap-2">
                         <button
                             onClick={handlePreviousPage}
-                            disabled={page === 1}
+                            disabled={pagina === 1}
                             className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Anterior
                         </button>
                         <button
                             onClick={handleNextPage}
-                            disabled={page >= totalPages}
+                            disabled={pagina >= totalPages}
                             className="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 shadow-md shadow-purple-200 transition-all disabled:opacity-50 disabled:bg-gray-300 disabled:shadow-none disabled:cursor-not-allowed"
                         >
                             Siguiente

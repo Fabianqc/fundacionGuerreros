@@ -4,5 +4,5 @@ export interface CreateDoctorInterface {
     licenseNumber: string;
     status: string;
     especialidades: string[];
-    horarios: string[];
+    horarios: any;
 }

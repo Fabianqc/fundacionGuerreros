@@ -8,5 +8,6 @@ import { DoctorHorario } from './entities/doctor-horario.entity';
   imports: [TypeOrmModule.forFeature([DoctorHorario])],
   controllers: [DoctorHorarioController],
   providers: [DoctorHorarioService],
+  exports: [DoctorHorarioService],
 })
 export class DoctorHorarioModule { }

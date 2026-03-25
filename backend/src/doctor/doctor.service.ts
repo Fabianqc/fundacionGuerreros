@@ -5,9 +5,11 @@ import { Repository } from 'typeorm';
 import { Doctor } from './entities/doctor.entity';
 import { DoctorHasEspecialidade } from 'src/doctor_has_especialidades/entities/doctor_has_especialidade.entity';
 import { DoctorHorario } from 'src/doctor-horario/entities/doctor-horario.entity';
-import { DataSource } from 'typeorm';
+import { DataSource, MoreThanOrEqual } from 'typeorm';
 import { DoctorHasEspecialidadesService } from 'src/doctor_has_especialidades/doctor_has_especialidades.service';
 import { Persona } from 'src/personas/entities/persona.entity';
+
+import { DoctorHorarioService } from 'src/doctor-horario/doctor-horario.service';
 
 import { InjectRepository } from '@nestjs/typeorm';
 import { instanceToPlain } from 'class-transformer';
@@ -17,10 +19,10 @@ export class DoctorService {
     constructor(
         @InjectRepository(Doctor)
         private readonly doctorRepository: Repository<Doctor>,
-        @InjectRepository(DoctorHorario)
-        private readonly doctorHorarioRepository: Repository<DoctorHorario>,
         private readonly dataSource: DataSource,
-        private readonly doctorHasEspecialidadesService: DoctorHasEspecialidadesService) { }
+        private readonly doctorHasEspecialidadesService: DoctorHasEspecialidadesService,
+        private readonly doctorHorarioService: DoctorHorarioService
+    ) { }
 
 
     async update(updateDoctorDto: UpdateDoctorDto) {
@@ -60,6 +62,18 @@ export class DoctorService {
                     name_especialidad: especialidades
                 }, queryRunner.manager);
             }
+
+            if (updateDoctorDto.horarios !== undefined) {
+                // Eliminar horarios futuros para reasignar los nuevos
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                await queryRunner.manager.delete(DoctorHorario, { 
+                    doctor: { id: doctor.id },
+                    fecha: MoreThanOrEqual(today)
+                });
+
+                await this.doctorHorarioService.create(updateDoctorDto.horarios, doctor, queryRunner.manager);
+            }
             await queryRunner.commitTransaction();
         } catch (error) {
             await queryRunner.rollbackTransaction();
@@ -96,18 +110,21 @@ export class DoctorService {
     }
 
     async findOne(ci_doctor: string, tipo_cedula: string) {
-        const doctor = await this.doctorRepository.findOne({ where: { persona: { cedula: ci_doctor, tipo_cedula: tipo_cedula } }, relations: ['doctor_especialidades.especialidad'] });
+        const doctor = await this.doctorRepository.findOne({
+            where: { persona: { cedula: ci_doctor, tipo_cedula: tipo_cedula } },
+            relations: ['doctor_especialidades.especialidad', 'doctor_horario']
+        });
         if (!doctor) {
             throw new BadRequestException('Doctor no encontrado');
         }
         const transformed = instanceToPlain(doctor);
         transformed.doctor_especialidades = doctor.doctor_especialidades?.map(de => de.especialidad.nombre) || [];
+        transformed.horarios = this.doctorHorarioService.reconstructDto(doctor.doctor_horario);
         return transformed;
     }
 
     async create(createDoctorDto: CreateDoctorDto) {
-        //The schedules section still needs to be developed.
-        console.log(createDoctorDto);
+        // La sección de horarios aún debe desarrollarse.
         const queryRunner = this.dataSource.createQueryRunner();
         await queryRunner.connect();
         await queryRunner.startTransaction();
@@ -132,6 +149,11 @@ export class DoctorService {
                 ci_doctor: createDoctorDto.ci_doctor,
                 name_especialidad: createDoctorDto.especialidades
             }, queryRunner.manager);
+            
+            if (createDoctorDto.horarios) {
+                await this.doctorHorarioService.create(createDoctorDto.horarios, doctor, queryRunner.manager);
+            }
+
             await queryRunner.commitTransaction();
         } catch (error) {
             await queryRunner.rollbackTransaction();
